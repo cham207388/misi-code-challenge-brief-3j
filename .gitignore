@@ -1,0 +1,60 @@
+# Build
+.gradle/
+build/
+out/
+bin/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node
+node_modules/
+dist/
+apps/web/dist/
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+
+# Generated static (never commit Vite output)
+apps/api/src/main/resources/static/assets/
+apps/api/src/main/resources/static/index.html
+
+# Env and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.p12
+id_rsa
+id_ed25519
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Test / coverage
+coverage/
+.nyc_output/
+hs_err_pid*
+replay_pid*
+
+# OS / misc
+*.log
+.cache/
+.kotlin/
+thumbs.db
+memorial-ops.bundle

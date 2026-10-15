@@ -1,0 +1,12 @@
+hostname                 = "brief3-dev.wsllclabs.com"
+vpc_cidr                 = "10.30.0.0/16"
+app_desired_count        = 1
+db_instance_class        = "db.t4g.micro"
+db_multi_az              = false
+db_backup_retention      = 1
+deletion_protection      = false
+enable_waf               = false
+enable_nat_per_az        = false
+log_retention_days       = 14
+scenario_control_enabled = true
+seed_on_deploy           = true

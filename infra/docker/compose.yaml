@@ -1,0 +1,207 @@
+name: memorial-ops
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    profiles: [core, full]
+    environment:
+      POSTGRES_DB: memorialops
+      POSTGRES_USER: memorial
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memorial}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memorial -d memorialops"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    profiles: [core, full]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123456}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    profiles: [core, full]
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123456}
+      MINIO_APP_USER: ${MINIO_ACCESS_KEY:-memorial}
+      MINIO_APP_PASSWORD: ${MINIO_SECRET_KEY:-memorial-minio}
+    volumes:
+      - ./minio-init.sh:/minio-init.sh:ro
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
+
+  sftp:
+    image: atmoz/sftp:alpine
+    profiles: [mocks, full]
+    command: ${SFTP_USERNAME:-feed}:${SFTP_PASSWORD:-feedpass}:1001:100:upload
+    ports:
+      - "2222:22"
+    volumes:
+      - sftpdata:/home/${SFTP_USERNAME:-feed}/upload
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep sshd"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  applicant-registry:
+    image: brief3/mock-applicant-registry:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mock
+      args:
+        MODULE: applicant-registry
+    profiles: [mocks, full]
+    environment:
+      SERVER_PORT: 8080
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  regional-calendar:
+    image: brief3/mock-regional-calendar:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mock
+      args:
+        MODULE: regional-calendar
+    profiles: [mocks, full]
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  notification-gateway:
+    image: brief3/mock-notification-gateway:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mock
+      args:
+        MODULE: notification-gateway
+    profiles: [mocks, full]
+    environment:
+      APP_WEBHOOK_URL: http://app:8080/api/webhooks/delivery
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  weather-advisory:
+    image: brief3/mock-weather-advisory:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mock
+      args:
+        MODULE: weather-advisory
+    profiles: [mocks, full]
+    ports:
+      - "8084:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  geocoding:
+    image: brief3/mock-geocoding:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mock
+      args:
+        MODULE: geocoding
+    profiles: [mocks, full]
+    ports:
+      - "8085:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  partner-feed:
+    image: brief3/mock-partner-feed:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mock
+      args:
+        MODULE: partner-feed
+    profiles: [mocks, full]
+    ports:
+      - "8086:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  app:
+    image: brief3/app:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.app
+    profiles: [core, full]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/memorialops
+      SPRING_DATASOURCE_USERNAME: memorial
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-memorial}
+      REGISTRY_BASE_URL: http://applicant-registry:8080
+      CALENDAR_BASE_URL: http://regional-calendar:8080
+      NOTIFICATION_BASE_URL: http://notification-gateway:8080
+      WEATHER_BASE_URL: http://weather-advisory:8080
+      GEOCODING_BASE_URL: http://geocoding:8080
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-memorial}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-memorial-minio}
+      SFTP_HOST: sftp
+      SFTP_USERNAME: ${SFTP_USERNAME:-feed}
+      SFTP_PASSWORD: ${SFTP_PASSWORD:-feedpass}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 50s
+
+volumes:
+  pgdata:
+  miniodata:
+  sftpdata:

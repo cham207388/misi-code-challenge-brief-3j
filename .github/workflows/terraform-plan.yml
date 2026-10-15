@@ -1,0 +1,36 @@
+name: terraform-plan
+
+on:
+  pull_request:
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform-plan.yml"
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.6"
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ vars.AWS_PLAN_ROLE_ARN != '' }}
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Validate
+        run: make tf-validate
+      - name: Plan workspaces
+        if: ${{ vars.AWS_PLAN_ROLE_ARN != '' }}
+        run: |
+          make tf-plan ENV=dev
+          make tf-plan ENV=prod
+      - name: Comment
+        if: ${{ vars.AWS_PLAN_ROLE_ARN != '' }}
+        run: echo "Terraform plans generated for dev and prod. See workflow artifacts."
