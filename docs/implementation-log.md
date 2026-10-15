@@ -33,3 +33,10 @@ Scaffolded the Memorial Event Operations walking skeleton from `docs/plan.md` an
 **AI assistance**
 
 Implemented with an AI coding agent under the plan's master build prompt. No `terraform apply` and no AWS mutations were performed.
+
+**Verification (2026-10-15)**
+
+- `./gradlew :apps:api:test` green (ArchitectureTest ×3, ModularityTests, MemorialOpsIT)
+- `make image` / Compose `--profile full` healthy: app readiness UP, six mocks healthy, RustFS buckets `attachments` and `permits` created
+- Playwright `e2e/smoke.spec.ts` passed against http://localhost:8080 (health, coordinator login, dashboard, `/applications` reload)
+- `ManagePullRequest` refused with GitHub “must be a collaborator”; branch `cursor/sprint-0-foundations-ed42` is pushed for a human to open the PR
