@@ -19,7 +19,8 @@ COPY --from=web /web/dist /src/apps/web/dist
 RUN chmod +x gradlew && ./gradlew --no-daemon :apps:api:bootJar -PskipWeb=true
 
 FROM eclipse-temurin:25-jre@sha256:fd4b1c02c64eef378212e23656fc0b0caa41a357876fa0b60e51ceda94a3db64
-RUN useradd --system --uid 10001 --create-home memorial
+RUN useradd --system --uid 10001 --create-home memorial \
+    && rm -f /usr/bin/pebble
 WORKDIR /app
 COPY --from=build /src/apps/api/build/libs/api-0.1.0.jar /app/app.jar
 USER memorial

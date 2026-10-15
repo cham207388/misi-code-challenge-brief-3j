@@ -16,10 +16,10 @@ init:
 jars:
 	./gradlew bootJar
 
-up: init
+up: init jars
 	$(COMPOSE) --profile full up -d --build
 
-up-core: init
+up-core: init jars
 	$(COMPOSE) --profile core up -d --build
 
 down:
