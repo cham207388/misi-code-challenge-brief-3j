@@ -27,6 +27,7 @@ Scaffolded the Memorial Event Operations walking skeleton from `docs/plan.md` an
 - Container images copy host `bootJar` outputs (via `make jars`) into `eclipse-temurin:25-jre` instead of a multi-stage Gradle build inside Docker. CI jobs that call `make image` / `make up` therefore install JDK 25 and Node 22.
 - Local Compose object storage is `rustfs/rustfs` (S3 API + console) after `minio/minio` returned pull-access-denied without registry login. Bucket init uses `amazon/aws-cli`.
 - `StaticCacheConfig` must register `/index.html` against the `classpath:/static/` directory. Pointing the handler at the file path made Spring look for `static/index.html/index.html` and the SPA fallback returned 404.
+- SPA login must echo the raw `XSRF-TOKEN` cookie. Spring's XOR CSRF request handler encodes `CsrfToken.getToken()`, and sending that value as `X-XSRF-TOKEN` returns 403.
 - Hibernate `ddl-auto=validate` cannot map `citext` to the JPA `String` columns on `app_user` / `applicant`, so those columns are `varchar(255)` in the Flyway baseline. The `citext` extension remains installed for later use.
 
 **AI assistance**

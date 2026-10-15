@@ -37,8 +37,17 @@ public class AuthController {
 
     @GetMapping("/csrf")
     @PreAuthorize("permitAll()")
-    public CsrfResponse csrf(CsrfToken csrfToken) {
-        return new CsrfResponse(csrfToken.getHeaderName(), csrfToken.getToken());
+    public CsrfResponse csrf(CsrfToken csrfToken, HttpServletRequest request) {
+        String token = csrfToken.getToken();
+        if (request.getCookies() != null) {
+            for (var cookie : request.getCookies()) {
+                if ("XSRF-TOKEN".equals(cookie.getName()) && cookie.getValue() != null && !cookie.getValue().isBlank()) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        return new CsrfResponse(csrfToken.getHeaderName(), token);
     }
 
     @PostMapping("/login")

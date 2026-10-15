@@ -10,6 +10,15 @@ export class ApiError extends Error {
 
 let csrfToken: string | null = null;
 
+function readCookie(name: string): string | null {
+  const prefix = `${name}=`;
+  const found = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  return found ? decodeURIComponent(found.slice(prefix.length)) : null;
+}
+
 export async function ensureCsrf(): Promise<string> {
   if (csrfToken) {
     return csrfToken;
@@ -18,8 +27,13 @@ export async function ensureCsrf(): Promise<string> {
   if (!response.ok) {
     throw new ApiError(response.status, "Unable to start a secure session", response.headers.get("X-Correlation-ID") ?? "");
   }
-  const body = (await response.json()) as { token: string };
-  csrfToken = body.token;
+  // CookieCsrfTokenRepository stores the raw token; the XOR request handler
+  // encodes getToken() for the request attribute. Echo the cookie value.
+  csrfToken = readCookie("XSRF-TOKEN");
+  if (!csrfToken) {
+    const body = (await response.json()) as { token: string };
+    csrfToken = body.token;
+  }
   return csrfToken;
 }
 
