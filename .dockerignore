@@ -15,5 +15,4 @@ infra/terraform
 .env.example
 memorial-ops.bundle
 apps/api/build
-mocks/*/build
 build
