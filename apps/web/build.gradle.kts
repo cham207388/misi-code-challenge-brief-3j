@@ -8,8 +8,11 @@ node {
     nodeProjectDir.set(layout.projectDirectory)
 }
 
+val skipWeb = providers.gradleProperty("skipWeb").map { it.isBlank() || it.toBoolean() }.orElse(false)
+
 val npmCi =
     tasks.register<com.github.gradle.node.npm.task.NpmTask>("npmCi") {
+        onlyIf { !skipWeb.get() }
         args.set(listOf("ci"))
         inputs.files(layout.projectDirectory.file("package.json"), layout.projectDirectory.file("package-lock.json"))
         outputs.dir(layout.projectDirectory.dir("node_modules"))
@@ -17,6 +20,7 @@ val npmCi =
 
 val npmBuild =
     tasks.register<com.github.gradle.node.npm.task.NpmTask>("npmBuild") {
+        onlyIf { !skipWeb.get() }
         dependsOn(npmCi)
         args.set(listOf("run", "build"))
         inputs.dir(layout.projectDirectory.dir("src"))
@@ -31,6 +35,7 @@ val npmBuild =
     }
 
 tasks.register<com.github.gradle.node.npm.task.NpmTask>("npmTest") {
+    onlyIf { !skipWeb.get() }
     dependsOn(npmCi)
     args.set(listOf("run", "test"))
 }

@@ -69,7 +69,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Stale update",
                 "The record was changed by someone else");
         problem.setProperty("entity", exception.getPersistentClassName());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(HttpHeaders.ETAG, "\"0\"")
+                .body(problem);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    ResponseEntity<ProblemDetail> conflict(ConflictException exception) {
+        ProblemDetail problem = ProblemSupport.create(
+                HttpStatus.CONFLICT, ProblemSupport.TYPE_PREFIX + "conflict", "Stale update", exception.getMessage());
+        problem.setProperty("version", exception.getVersion());
+        problem.setProperty("etag", exception.getEtag());
+        problem.setProperty("current", exception.getCurrent());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(HttpHeaders.ETAG, exception.getEtag())
+                .body(problem);
     }
 
     @ExceptionHandler(InvalidTransitionException.class)
@@ -81,6 +95,33 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 exception.getMessage());
         problem.setProperty("allowedTransitions", exception.getAllowedTransitions());
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(problem);
+    }
+
+    @ExceptionHandler(SeparationOfDutiesException.class)
+    ResponseEntity<ProblemDetail> separationOfDuties(SeparationOfDutiesException exception) {
+        ProblemDetail problem = ProblemSupport.create(
+                HttpStatus.FORBIDDEN,
+                ProblemSupport.TYPE_PREFIX + "separation-of-duties",
+                "Separation of duties",
+                exception.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problem);
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    ResponseEntity<ProblemDetail> notFound(NotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ProblemSupport.create(HttpStatus.NOT_FOUND, exception.getMessage()));
+    }
+
+    @ExceptionHandler(RateLimitedException.class)
+    ResponseEntity<ProblemDetail> rateLimited(RateLimitedException exception) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ProblemSupport.create(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage()));
+    }
+
+    @ExceptionHandler(RequestValidationException.class)
+    ResponseEntity<ProblemDetail> requestValidation(RequestValidationException exception) {
+        return ResponseEntity.badRequest().body(ProblemSupport.create(HttpStatus.BAD_REQUEST, exception.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

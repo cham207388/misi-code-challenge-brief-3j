@@ -34,6 +34,15 @@ public class CurrentUserService {
         return toResponse(requireUser(username));
     }
 
+    @Transactional(readOnly = true)
+    public AppUser requireCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UsernameNotFoundException("Not authenticated");
+        }
+        return requireUser(authentication.getName());
+    }
+
     private AppUser requireUser(String username) {
         return appUserRepository
                 .findByUsernameIgnoreCaseAndDeletedAtIsNull(username)

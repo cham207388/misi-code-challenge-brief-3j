@@ -1,0 +1,6 @@
+package com.wsllclabs.memorialops.application;
+
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ApplicantRepository extends JpaRepository<Applicant, UUID> {}

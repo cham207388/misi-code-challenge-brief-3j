@@ -17,6 +17,7 @@ spotless {
     }
     kotlinGradle {
         target("*.gradle.kts", "gradle/*.gradle.kts", "build-logic/**/*.gradle.kts", "apps/**/*.gradle.kts", "mocks/**/*.gradle.kts")
+        targetExclude("**/build/**")
         trimTrailingWhitespace()
         endWithNewline()
     }

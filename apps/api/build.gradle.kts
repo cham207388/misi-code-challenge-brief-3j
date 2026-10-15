@@ -29,7 +29,8 @@ dependencies {
     testImplementation(libs.archunit.junit6)
 }
 
-val skipWeb = providers.gradleProperty("skipWeb").map(String::toBoolean).orElse(false)
+val skipWeb =
+    providers.gradleProperty("skipWeb").map { it.isBlank() || it.toBoolean() }.orElse(false)
 val webDist = project(":apps:web").layout.projectDirectory.dir("dist")
 
 tasks.named<ProcessResources>("processResources") {
@@ -91,6 +92,10 @@ tasks.jacocoTestCoverageVerification {
                     "com.wsllclabs.memorialops.identity.dto",
                     "com.wsllclabs.memorialops.exception",
                     "com.wsllclabs.memorialops.shared.health",
+                    "com.wsllclabs.memorialops.application",
+                    "com.wsllclabs.memorialops.workflow",
+                    "com.wsllclabs.memorialops.audit",
+                    "com.wsllclabs.memorialops.shared.reference",
                 )
             limit {
                 counter = "LINE"
