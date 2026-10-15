@@ -1,0 +1,14 @@
+hostname                 = "brief3.wsllclabs.com"
+vpc_cidr                 = "10.31.0.0/16"
+app_desired_count        = 2
+app_cpu                  = 1024
+app_memory               = 2048
+db_instance_class        = "db.t4g.small"
+db_multi_az              = true
+db_backup_retention      = 7
+deletion_protection      = true
+enable_waf               = true
+enable_nat_per_az        = true
+log_retention_days       = 90
+scenario_control_enabled = true
+seed_on_deploy           = false

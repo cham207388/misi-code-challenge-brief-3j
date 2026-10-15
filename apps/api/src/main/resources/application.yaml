@@ -1,0 +1,132 @@
+spring:
+  application:
+    name: memorial-ops
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+  session:
+    timeout: 30m
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        name: MEMORIAL_SESSION
+        http-only: true
+        same-site: lax
+        secure: false
+
+logging:
+  structured:
+    format:
+      console: ecs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+      group:
+        liveness:
+          include: ping
+        readiness:
+          include: ping,db
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui
+
+app:
+  integrations:
+    registry:
+      base-url: ${REGISTRY_BASE_URL:http://applicant-registry:8080}
+      api-key: ${REGISTRY_API_KEY:dev-registry-key}
+      connect-timeout: 2s
+      read-timeout: 3s
+    calendar:
+      base-url: ${CALENDAR_BASE_URL:http://regional-calendar:8080}
+      client-id: ${CALENDAR_CLIENT_ID:memorial-ops}
+      client-secret: ${CALENDAR_CLIENT_SECRET:dev-calendar-secret}
+      connect-timeout: 2s
+      read-timeout: 5s
+    notification:
+      base-url: ${NOTIFICATION_BASE_URL:http://notification-gateway:8080}
+      hmac-secret: ${NOTIFICATION_HMAC_SECRET:dev-hmac-secret}
+      connect-timeout: 2s
+      read-timeout: 5s
+    weather:
+      base-url: ${WEATHER_BASE_URL:http://weather-advisory:8080}
+      connect-timeout: 2s
+      read-timeout: 3s
+    geocoding:
+      base-url: ${GEOCODING_BASE_URL:http://geocoding:8080}
+      connect-timeout: 2s
+      read-timeout: 3s
+    partner-feed:
+      host: ${SFTP_HOST:sftp}
+      port: ${SFTP_PORT:22}
+      username: ${SFTP_USERNAME:feed}
+      password: ${SFTP_PASSWORD:feedpass}
+    storage:
+      endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+      access-key: ${MINIO_ACCESS_KEY:minio}
+      secret-key: ${MINIO_SECRET_KEY:minio123456}
+      attachments-bucket: attachments
+      permits-bucket: permits
+      path-style: true
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/memorialops}
+    username: ${SPRING_DATASOURCE_USERNAME:memorial}
+    password: ${SPRING_DATASOURCE_PASSWORD:memorial}
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  jpa:
+    hibernate:
+      ddl-auto: validate
+---
+spring:
+  config:
+    activate:
+      on-profile: aws
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+app:
+  integrations:
+    storage:
+      endpoint: ""
+      path-style: false

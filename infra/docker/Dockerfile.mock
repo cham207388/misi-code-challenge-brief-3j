@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1.7
+# Expects :mocks:<module>:bootJar to have already run.
+ARG MODULE=applicant-registry
+FROM eclipse-temurin:25-jre
+ARG MODULE
+RUN useradd --system --uid 10001 --create-home memorial \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY mocks/${MODULE}/build/libs/*.jar /app/app.jar
+USER memorial
+EXPOSE 8080
+HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=8 \
+  CMD curl -fsS http://127.0.0.1:8080/actuator/health/liveness || exit 1
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/app.jar"]

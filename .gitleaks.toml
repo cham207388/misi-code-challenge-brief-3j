@@ -1,0 +1,16 @@
+title = "memorial-ops"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Demo bcrypt hashes and documented placeholders are not live secrets"
+paths = [
+  '''docs/.*''',
+  '''README.md''',
+  '''apps/api/src/main/resources/db/migration/V002__seed_identity.sql''',
+]
+regexes = [
+  '''CHANGE_ME''',
+  '''REPLACE_ME''',
+]

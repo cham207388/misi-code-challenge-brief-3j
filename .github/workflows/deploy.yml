@@ -1,0 +1,98 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Immutable image tag to deploy
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ vars.AWS_ECR_PUSH_ROLE_ARN != '' }}
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Build images
+        run: make image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+      - name: Push skipped when OIDC is not configured
+        if: ${{ vars.AWS_ECR_PUSH_ROLE_ARN == '' }}
+        run: echo "OIDC role not configured; image built locally only."
+
+  deploy-dev:
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.6"
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN != '' }}
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Apply deferred without OIDC
+        if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN == '' }}
+        run: echo "Bootstrap OIDC roles before the first apply. Terraform apply is not run from this skeleton without role ARNs."
+      - name: Apply dev
+        if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN != '' }}
+        run: |
+          terraform -chdir=infra/terraform/live init -input=false
+          terraform -chdir=infra/terraform/live workspace select dev
+          terraform -chdir=infra/terraform/live apply -auto-approve -var-file=env/dev.tfvars -var image_tag=${{ needs.publish.outputs.image_tag }}
+
+  deploy-prod:
+    needs: [publish, deploy-dev]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.6"
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ vars.AWS_DEPLOY_PROD_ROLE_ARN != '' }}
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_PROD_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Apply deferred without OIDC
+        if: ${{ vars.AWS_DEPLOY_PROD_ROLE_ARN == '' }}
+        run: echo "Production apply requires the GitHub production environment reviewers and OIDC role."
+      - name: Apply prod
+        if: ${{ vars.AWS_DEPLOY_PROD_ROLE_ARN != '' }}
+        run: |
+          terraform -chdir=infra/terraform/live init -input=false
+          terraform -chdir=infra/terraform/live workspace select prod
+          terraform -chdir=infra/terraform/live apply -auto-approve -var-file=env/prod.tfvars -var image_tag=${{ needs.publish.outputs.image_tag }}
