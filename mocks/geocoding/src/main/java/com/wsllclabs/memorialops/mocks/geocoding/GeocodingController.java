@@ -32,9 +32,6 @@ public class GeocodingController {
     @PostMapping("/geocode")
     public Map<String, Object> write() {
         return Map.of(
-                "service", "geocoding",
-                "id", UUID.randomUUID().toString(),
-                "status", "accepted",
-                "items", List.of());
+                "service", "geocoding", "id", UUID.randomUUID().toString(), "status", "accepted", "items", List.of());
     }
 }

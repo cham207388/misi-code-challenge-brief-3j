@@ -6,8 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: Immutable image tag to deploy
+        description: Immutable image tag to deploy (leave empty to build this SHA). Used for rollback.
         required: false
+        type: string
 
 permissions:
   contents: read
@@ -17,48 +18,66 @@ concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  AWS_REGION: us-east-1
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps.meta.outputs.sha }}
+      image_tag: ${{ steps.meta.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v5
       - id: meta
-        run: echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "25"
-          cache: gradle
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
-      - uses: aws-actions/configure-aws-credentials@v4
+        run: echo "tag=${INPUT_TAG:-$GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_TAG: ${{ github.event.inputs.image_tag }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3
+        if: ${{ github.event.inputs.image_tag == '' }}
+      - uses: aws-actions/configure-aws-credentials@557591d3fb8057929645fd3c7147240c3ec8e690 # v4
         if: ${{ vars.AWS_ECR_PUSH_ROLE_ARN != '' }}
         with:
           role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }}
           aws-region: us-east-1
-      - name: Build images
+      - name: Build image
+        if: ${{ github.event.inputs.image_tag == '' }}
         run: make image
         env:
-          IMAGE_TAG: ${{ github.sha }}
-      - name: Push skipped when OIDC is not configured
-        if: ${{ vars.AWS_ECR_PUSH_ROLE_ARN == '' }}
-        run: echo "OIDC role not configured; image built locally only."
+          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
+      - name: Scan image
+        if: ${{ github.event.inputs.image_tag == '' }}
+        uses: aquasecurity/trivy-action@6abccf398f78b4c337599c0656f933d91efb91a0
+        with:
+          image-ref: brief3/app:${{ steps.meta.outputs.tag }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+      - name: Login, tag, and push
+        if: ${{ vars.AWS_ECR_PUSH_ROLE_ARN != '' && github.event.inputs.image_tag == '' }}
+        run: make image-push
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
+      - name: Rollback uses an existing tag
+        if: ${{ github.event.inputs.image_tag != '' }}
+        run: echo "Deploying existing image tag ${{ github.event.inputs.image_tag }} without rebuilding."
 
   deploy-dev:
     needs: publish
     runs-on: ubuntu-latest
     environment: dev
+    concurrency:
+      group: terraform-dev
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v5
+      - uses: hashicorp/setup-terraform@b75000b53e9ce4de2b4712237bbdb711bdc92aba # v3
         with:
           terraform_version: "1.16.6"
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@557591d3fb8057929645fd3c7147240c3ec8e690 # v4
         if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN != '' }}
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN }}
@@ -66,23 +85,30 @@ jobs:
       - name: Apply deferred without OIDC
         if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN == '' }}
         run: echo "Bootstrap OIDC roles before the first apply. Terraform apply is not run from this skeleton without role ARNs."
-      - name: Apply dev
+      - name: Plan and apply dev
         if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN != '' }}
         run: |
-          terraform -chdir=infra/terraform/live init -input=false
-          terraform -chdir=infra/terraform/live workspace select dev
-          terraform -chdir=infra/terraform/live apply -auto-approve -var-file=env/dev.tfvars -var image_tag=${{ needs.publish.outputs.image_tag }}
+          make tf-plan ENV=dev
+          make tf-apply ENV=dev
+        env:
+          IMAGE_TAG: ${{ needs.publish.outputs.image_tag }}
 
   deploy-prod:
     needs: [publish, deploy-dev]
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: terraform-prod
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v5
+      - uses: hashicorp/setup-terraform@b75000b53e9ce4de2b4712237bbdb711bdc92aba # v3
         with:
           terraform_version: "1.16.6"
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@557591d3fb8057929645fd3c7147240c3ec8e690 # v4
         if: ${{ vars.AWS_DEPLOY_PROD_ROLE_ARN != '' }}
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_PROD_ROLE_ARN }}
@@ -90,9 +116,10 @@ jobs:
       - name: Apply deferred without OIDC
         if: ${{ vars.AWS_DEPLOY_PROD_ROLE_ARN == '' }}
         run: echo "Production apply requires the GitHub production environment reviewers and OIDC role."
-      - name: Apply prod
+      - name: Plan and apply prod
         if: ${{ vars.AWS_DEPLOY_PROD_ROLE_ARN != '' }}
         run: |
-          terraform -chdir=infra/terraform/live init -input=false
-          terraform -chdir=infra/terraform/live workspace select prod
-          terraform -chdir=infra/terraform/live apply -auto-approve -var-file=env/prod.tfvars -var image_tag=${{ needs.publish.outputs.image_tag }}
+          make tf-plan ENV=prod
+          make tf-apply ENV=prod
+        env:
+          IMAGE_TAG: ${{ needs.publish.outputs.image_tag }}

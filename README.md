@@ -2,22 +2,22 @@
 
 Fictional internal case-management app for cemetery event permits (VA MISI Mock Build Brief 3). This is a practice exercise. All people, cemeteries and records are invented.
 
-**Stack (documented deviation from the brief's .NET preference — [ADR-001](docs/adr/001-stack-deviation.md)):** React 19 + TypeScript + Vite · Java 25 + Spring Boot 4.1 · Gradle 9 version catalog · PostgreSQL 17 · MinIO · Docker Compose · Terraform on AWS us-east-1 · GitHub Actions with OIDC.
+**Stack (documented deviation from the brief's .NET preference — [ADR-001](docs/adr/001-stack-deviation.md)):** React 19 + TypeScript + Vite · Java 25 + Spring Boot 4.1 · Gradle 9 version catalog · PostgreSQL 17 · RustFS · Docker Compose · Terraform on AWS us-east-1 · GitHub Actions with OIDC.
 
 Sprint 0 delivers a walking skeleton: build, image, Compose, Flyway baseline, health, login, routed app shell, CI workflows and Terraform modules. Domain workflow and the 26 live pages arrive in later sprints.
 
 ## Prerequisites
 
 - Docker and Docker Compose
-- JDK 25 and Node 22 (`make up` / `make image` compile bootJars on the host, then copy them into slim JRE images)
+- JDK 25 and Node 24.21 (`make image` is a digest-pinned multi-stage build; `make up` builds Compose images)
 - Optional: Terraform ≥ 1.11
 
 ## Clean-machine run
 
 ```bash
 make init          # copies .env.example → .env
-make up            # ./gradlew bootJar, then Compose (Postgres, MinIO, SFTP, mocks, app)
-# wait until http://localhost:8080/actuator/health/readiness returns UP
+make up            # Compose (Postgres, RustFS, SFTP, mocks, app)
+# wait until http://127.0.0.1:8080/actuator/health/readiness returns UP
 make test          # Gradle unit + Testcontainers tests
 make e2e           # Playwright smoke against the running stack
 make down
@@ -26,7 +26,7 @@ make down
 Useful variants:
 
 ```bash
-make up-core       # app + Postgres + MinIO only
+make up-core       # app + Postgres + RustFS only
 make verify        # spotless + tests
 make image         # build brief3/app:local
 make tf-validate   # terraform fmt/validate, no apply
@@ -50,6 +50,7 @@ Passwords are not shown in the UI.
 | attendant2   | Attendant!2026    | Event Attendant       |
 | auditor      | Auditor!2026      | Compliance Auditor    |
 | admin        | Admin!2026        | System Admin          |
+| dualrole     | DualRole!2026     | Reviewer + Ops Manager (SoD fixture) |
 
 ## Ports
 
@@ -68,7 +69,7 @@ Passwords are not shown in the UI.
 
 ## Architecture
 
-One Spring Boot service serves `/api/**` and the React SPA. Six independently runnable mock services plus MinIO and an SFTP container stand in for the brief's external systems. See [docs/plan.md](docs/plan.md) and [docs/brief/brief-3-spec.txt](docs/brief/brief-3-spec.txt).
+One Spring Boot service serves `/api/**` and the React SPA. Six independently runnable mock services plus RustFS and an SFTP container stand in for the brief's external systems. See [docs/plan.md](docs/plan.md) and [docs/brief/brief-3-spec.txt](docs/brief/brief-3-spec.txt).
 
 Local ↔ AWS mapping is in ADR-009. Git vs GitHub Actions is in ADR-010.
 
@@ -92,7 +93,7 @@ GitHub Actions uses OIDC roles `brief3-gha-plan`, `brief3-gha-ecr-push`, `brief3
 
 ## Makefile targets
 
-`init`, `jars`, `up`, `up-core`, `down`, `reset`, `logs`, `test`, `verify`, `e2e`, `image`, `lint`, `tf-fmt`, `tf-validate`, `tf-plan`, `screenshots`, `bundle`.
+`init`, `jars`, `up`, `up-core`, `down`, `reset`, `logs`, `test`, `verify`, `e2e`, `image`, `ecr-login`, `image-push`, `trivy`, `lint`, `tf-fmt`, `tf-validate`, `tf-plan`, `tf-apply`, `screenshots`, `bundle`.
 
 ## Submission
 

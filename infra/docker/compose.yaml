@@ -2,14 +2,14 @@ name: memorial-ops
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     profiles: [core, full]
     environment:
       POSTGRES_DB: memorialops
       POSTGRES_USER: memorial
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memorial}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,23 +18,20 @@ services:
       timeout: 5s
       retries: 20
 
-  minio:
-    # rustfs is S3-compatible and anonymously pullable; minio/minio now requires registry login.
-    image: rustfs/rustfs:latest
+  rustfs:
+    image: rustfs/rustfs@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
     profiles: [core, full]
     environment:
-      RUSTFS_ACCESS_KEY: ${MINIO_ACCESS_KEY:-memorial}
-      RUSTFS_SECRET_KEY: ${MINIO_SECRET_KEY:-memorial-minio}
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
       RUSTFS_ADDRESS: ":9000"
       RUSTFS_CONSOLE_ADDRESS: ":9001"
       RUSTFS_CONSOLE_ENABLE: "true"
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-memorial}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-memorial-minio}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
-      - miniodata:/data
+      - rustfsdata:/data
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
       interval: 10s
@@ -42,29 +39,29 @@ services:
       retries: 20
       start_period: 15s
 
-  minio-init:
-    image: amazon/aws-cli:latest
+  rustfs-init:
+    image: amazon/aws-cli@sha256:733d5be1015825e4038c6016f3fa9954868ddee1f611b73be795a9cc2e706bfd
     profiles: [core, full]
     depends_on:
-      minio:
+      rustfs:
         condition: service_healthy
     environment:
-      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-memorial}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-memorial-minio}
+      AWS_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_KEY}
       AWS_DEFAULT_REGION: us-east-1
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://rustfs:9000
     volumes:
-      - ./minio-init.sh:/minio-init.sh:ro
-    entrypoint: ["/bin/sh", "/minio-init.sh"]
+      - ./rustfs-init.sh:/rustfs-init.sh:ro
+    entrypoint: ["/bin/sh", "/rustfs-init.sh"]
 
   sftp:
-    image: atmoz/sftp:alpine
+    image: atmoz/sftp:alpine@sha256:7e439fabeae536fa254340724c042e11999924d906417dbb5c73602ad518813f
     profiles: [mocks, full]
-    command: ${SFTP_USERNAME:-feed}:${SFTP_PASSWORD:-feedpass}:1001:100:upload
+    command: ${SFTP_USERNAME}:${SFTP_PASSWORD}:1001:100:upload
     ports:
-      - "2222:22"
+      - "127.0.0.1:2222:22"
     volumes:
-      - sftpdata:/home/${SFTP_USERNAME:-feed}/upload
+      - sftpdata:/home/${SFTP_USERNAME}/upload
     healthcheck:
       test: ["CMD-SHELL", "pgrep sshd"]
       interval: 10s
@@ -72,7 +69,7 @@ services:
       retries: 10
 
   applicant-registry:
-    image: brief3/mock-applicant-registry:${IMAGE_TAG:-local}
+    image: brief3/mock-applicant-registry:${IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.mock
@@ -82,7 +79,7 @@ services:
     environment:
       SERVER_PORT: 8080
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
       interval: 10s
@@ -90,7 +87,7 @@ services:
       retries: 12
 
   regional-calendar:
-    image: brief3/mock-regional-calendar:${IMAGE_TAG:-local}
+    image: brief3/mock-regional-calendar:${IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.mock
@@ -98,7 +95,7 @@ services:
         MODULE: regional-calendar
     profiles: [mocks, full]
     ports:
-      - "8082:8080"
+      - "127.0.0.1:8082:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
       interval: 10s
@@ -106,7 +103,7 @@ services:
       retries: 12
 
   notification-gateway:
-    image: brief3/mock-notification-gateway:${IMAGE_TAG:-local}
+    image: brief3/mock-notification-gateway:${IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.mock
@@ -116,7 +113,7 @@ services:
     environment:
       APP_WEBHOOK_URL: http://app:8080/api/webhooks/delivery
     ports:
-      - "8083:8080"
+      - "127.0.0.1:8083:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
       interval: 10s
@@ -124,7 +121,7 @@ services:
       retries: 12
 
   weather-advisory:
-    image: brief3/mock-weather-advisory:${IMAGE_TAG:-local}
+    image: brief3/mock-weather-advisory:${IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.mock
@@ -132,7 +129,7 @@ services:
         MODULE: weather-advisory
     profiles: [mocks, full]
     ports:
-      - "8084:8080"
+      - "127.0.0.1:8084:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
       interval: 10s
@@ -140,7 +137,7 @@ services:
       retries: 12
 
   geocoding:
-    image: brief3/mock-geocoding:${IMAGE_TAG:-local}
+    image: brief3/mock-geocoding:${IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.mock
@@ -148,7 +145,7 @@ services:
         MODULE: geocoding
     profiles: [mocks, full]
     ports:
-      - "8085:8080"
+      - "127.0.0.1:8085:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
       interval: 10s
@@ -156,7 +153,7 @@ services:
       retries: 12
 
   partner-feed:
-    image: brief3/mock-partner-feed:${IMAGE_TAG:-local}
+    image: brief3/mock-partner-feed:${IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.mock
@@ -164,7 +161,7 @@ services:
         MODULE: partner-feed
     profiles: [mocks, full]
     ports:
-      - "8086:8080"
+      - "127.0.0.1:8086:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
       interval: 10s
@@ -172,7 +169,7 @@ services:
       retries: 12
 
   app:
-    image: brief3/app:${IMAGE_TAG:-local}
+    image: brief3/app:${IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.app
@@ -180,28 +177,28 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: local
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/memorialops
       SPRING_DATASOURCE_USERNAME: memorial
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-memorial}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       REGISTRY_BASE_URL: http://applicant-registry:8080
       CALENDAR_BASE_URL: http://regional-calendar:8080
       NOTIFICATION_BASE_URL: http://notification-gateway:8080
       WEATHER_BASE_URL: http://weather-advisory:8080
       GEOCODING_BASE_URL: http://geocoding:8080
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-memorial}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-memorial-minio}
+      RUSTFS_ENDPOINT: http://rustfs:9000
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
       SFTP_HOST: sftp
-      SFTP_USERNAME: ${SFTP_USERNAME:-feed}
-      SFTP_PASSWORD: ${SFTP_PASSWORD:-feedpass}
+      SFTP_USERNAME: ${SFTP_USERNAME}
+      SFTP_PASSWORD: ${SFTP_PASSWORD}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/readiness"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -209,5 +206,5 @@ services:
 
 volumes:
   pgdata:
-  miniodata:
+  rustfsdata:
   sftpdata:

@@ -2,20 +2,24 @@ COMPOSE := docker compose -f infra/docker/compose.yaml --env-file .env
 TF_LIVE := infra/terraform/live
 TF_BOOT := infra/terraform/bootstrap
 ENV ?= dev
+IMAGE_TAG ?= local
+AWS_REGION ?= us-east-1
+ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null)
+ECR_REGISTRY ?= $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 
-.PHONY: init jars up up-core down reset logs test verify e2e image lint tf-fmt tf-validate tf-plan screenshots bundle
+.PHONY: init jars up up-core down reset logs test verify e2e image ecr-login image-push trivy lint tf-fmt tf-validate tf-plan tf-apply screenshots bundle
 
 init:
 	@test -f .env || cp .env.example .env
-	@chmod +x infra/docker/minio-init.sh
+	@chmod +x infra/docker/rustfs-init.sh
 
 jars:
 	./gradlew bootJar
 
-up: init jars
+up: init
 	$(COMPOSE) --profile full up -d --build
 
-up-core: init jars
+up-core: init
 	$(COMPOSE) --profile core up -d --build
 
 down:
@@ -28,26 +32,34 @@ logs:
 	$(COMPOSE) logs -f $(SERVICE)
 
 test:
-	./gradlew test
+	./gradlew test integrationTest
 
 verify:
 	./gradlew verify
 
 e2e:
-	cd e2e && npm ci && npx playwright test
+	cd e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test --project=chromium
 
-image: jars
-	docker build -f infra/docker/Dockerfile.app -t brief3/app:$${IMAGE_TAG:-local} .
+image:
+	docker build -f infra/docker/Dockerfile.app -t brief3/app:$(IMAGE_TAG) .
+
+ecr-login:
+	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(ECR_REGISTRY)
+
+image-push: ecr-login
+	docker tag brief3/app:$(IMAGE_TAG) $(ECR_REGISTRY)/brief3/app:$(IMAGE_TAG)
+	docker push $(ECR_REGISTRY)/brief3/app:$(IMAGE_TAG)
+
+trivy:
+	trivy image --exit-code 1 --severity HIGH,CRITICAL brief3/app:$(IMAGE_TAG)
 
 lint:
 	./gradlew spotlessCheck
 	cd apps/web && npm ci && npm run lint
-	terraform -chdir=$(TF_LIVE) fmt -check -recursive
-	terraform -chdir=$(TF_BOOT) fmt -check -recursive
+	terraform fmt -check -recursive infra/terraform
 
 tf-fmt:
-	terraform -chdir=$(TF_LIVE) fmt -recursive
-	terraform -chdir=$(TF_BOOT) fmt -recursive
+	terraform fmt -recursive infra/terraform
 
 tf-validate:
 	terraform -chdir=$(TF_BOOT) init -backend=false
@@ -57,11 +69,14 @@ tf-validate:
 
 tf-plan:
 	terraform -chdir=$(TF_LIVE) init -input=false
-	terraform -chdir=$(TF_LIVE) workspace select $(ENV)
-	terraform -chdir=$(TF_LIVE) plan -var-file=env/$(ENV).tfvars -out=$(ENV).tfplan
+	terraform -chdir=$(TF_LIVE) workspace select -or-create $(ENV)
+	terraform -chdir=$(TF_LIVE) plan -var-file=env/$(ENV).tfvars -var image_tag=$(IMAGE_TAG) -out=$(ENV).tfplan
+
+tf-apply:
+	terraform -chdir=$(TF_LIVE) apply $(ENV).tfplan
 
 screenshots:
-	cd e2e && npm ci && npx playwright test --project=screenshots
+	cd e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test --project=screenshots
 
 bundle:
 	git bundle create memorial-ops.bundle --all

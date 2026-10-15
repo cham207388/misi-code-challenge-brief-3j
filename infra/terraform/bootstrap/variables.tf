@@ -14,3 +14,8 @@ variable "ecr_keep_untagged" {
   type    = number
   default = 10
 }
+
+variable "hosted_zone_name" {
+  type    = string
+  default = "wsllclabs.com"
+}

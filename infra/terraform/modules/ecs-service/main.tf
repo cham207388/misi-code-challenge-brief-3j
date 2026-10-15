@@ -4,7 +4,8 @@ resource "aws_cloudwatch_log_group" "this" {
 }
 
 resource "aws_iam_role" "execution" {
-  name = "${var.name_prefix}-${var.service_name}-exec"
+  name                 = "${var.name_prefix}-${var.service_name}-exec"
+  permissions_boundary = var.permissions_boundary_arn == "" ? null : var.permissions_boundary_arn
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -35,7 +36,8 @@ resource "aws_iam_role_policy" "secrets" {
 }
 
 resource "aws_iam_role" "task" {
-  name = "${var.name_prefix}-${var.service_name}-task"
+  name                 = "${var.name_prefix}-${var.service_name}-task"
+  permissions_boundary = var.permissions_boundary_arn == "" ? null : var.permissions_boundary_arn
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -92,6 +94,13 @@ resource "aws_ecs_task_definition" "this" {
         awslogs-stream-prefix = var.service_name
       }
     }
+    healthCheck = {
+      command     = ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/${var.container_port} || exit 1"]
+      interval    = 30
+      timeout     = 5
+      retries     = 3
+      startPeriod = 60
+    }
   }])
 }
 
@@ -143,7 +152,6 @@ resource "aws_ecs_service" "this" {
     rollback = true
   }
 
-  lifecycle {
-    ignore_changes = [task_definition]
-  }
+  force_new_deployment  = true
+  wait_for_steady_state = true
 }

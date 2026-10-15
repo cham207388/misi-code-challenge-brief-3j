@@ -1,18 +1,21 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { motion } from "motion/react";
-import { ApiError } from "../lib/api";
+import { ApiError, safeReturnUrl } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { ErrorBanner } from "../lib/errors";
 
 export function LoginPage() {
   const { me, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? "/dashboard";
+  const params = new URLSearchParams(location.search);
+  const from = safeReturnUrl(params.get("returnUrl") ?? (location.state as { from?: string } | null)?.from ?? "/dashboard");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [pending, setPending] = useState(false);
+  const invalid = Boolean(error);
 
   if (me) {
     return <Navigate to={from} replace />;
@@ -26,14 +29,14 @@ export function LoginPage() {
       await login(username, password);
       navigate(from, { replace: true });
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.detail : "Unable to sign in");
+      setError(cause instanceof ApiError ? cause : new Error("Unable to sign in"));
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#2c6a54,_#12352b_55%,_#0c241d)] px-4 py-12 text-stone">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#1b4d3e,_#12352b_55%,_#0c241d)] px-4 py-12 text-stone">
       <div className="mx-auto flex min-h-[80vh] max-w-5xl flex-col justify-center gap-10 lg:flex-row lg:items-center">
         <section className="max-w-lg text-parchment">
           <p className="text-sm uppercase tracking-[0.2em] text-gold">Willowmere Memorial District</p>
@@ -55,20 +58,24 @@ export function LoginPage() {
             Staff sign in
           </h2>
           <div className="mt-5 space-y-4">
-            <label className="block text-sm font-medium">
+            <label className="block text-sm font-medium" htmlFor="username">
               Username
               <input
+                id="username"
                 className="mt-1 w-full rounded-lg border border-slate/30 bg-white px-3 py-2"
                 name="username"
                 autoComplete="username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 required
+                aria-invalid={invalid}
+                aria-describedby={invalid ? "login-error" : undefined}
               />
             </label>
-            <label className="block text-sm font-medium">
+            <label className="block text-sm font-medium" htmlFor="password">
               Password
               <input
+                id="password"
                 className="mt-1 w-full rounded-lg border border-slate/30 bg-white px-3 py-2"
                 type="password"
                 name="password"
@@ -76,14 +83,12 @@ export function LoginPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
+                aria-invalid={invalid}
+                aria-describedby={invalid ? "login-error" : undefined}
               />
             </label>
           </div>
-          {error ? (
-            <p role="alert" className="mt-4 rounded-md bg-clay/10 px-3 py-2 text-sm text-clay">
-              {error}
-            </p>
-          ) : null}
+          {error ? <ErrorBanner id="login-error" error={error} fallback="Unable to sign in" /> : null}
           <button
             type="submit"
             disabled={pending}

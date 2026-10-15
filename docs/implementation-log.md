@@ -24,7 +24,7 @@ Scaffolded the Memorial Event Operations walking skeleton from `docs/plan.md` an
 - SPA fallback lists explicit application routes rather than a greedy `/**`
 - Readiness depends on `ping` + `db` so missing mocks do not fail the app container
 - Secrets module uses `random_password` + `secret_string` in Sprint 0; write-only ephemeral values can replace this once apply is reviewed
-- Container images copy host `bootJar` outputs (via `make jars`) into `eclipse-temurin:25-jre` instead of a multi-stage Gradle build inside Docker. CI jobs that call `make image` / `make up` therefore install JDK 25 and Node 22.
+- Container images are multi-stage: Node 24 builds the SPA, JDK 25 produces the bootJar, and a digest-pinned JRE runs it. CI uses Node 24.21.
 - Local Compose object storage is `rustfs/rustfs` (S3 API + console) after `minio/minio` returned pull-access-denied without registry login. Bucket init uses `amazon/aws-cli`.
 - `StaticCacheConfig` must register `/index.html` against the `classpath:/static/` directory. Pointing the handler at the file path made Spring look for `static/index.html/index.html` and the SPA fallback returned 404.
 - SPA login must echo the raw `XSRF-TOKEN` cookie. Spring's XOR CSRF request handler encodes `CsrfToken.getToken()`, and sending that value as `X-XSRF-TOKEN` returns 403.

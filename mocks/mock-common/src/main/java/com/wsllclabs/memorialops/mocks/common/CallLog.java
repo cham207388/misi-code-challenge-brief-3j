@@ -22,7 +22,9 @@ public class CallLog {
     }
 
     public long count() {
-        return records.stream().filter(record -> !record.path().startsWith("/__admin")).count();
+        return records.stream()
+                .filter(record -> !record.path().startsWith("/__admin"))
+                .count();
     }
 
     public void reset() {

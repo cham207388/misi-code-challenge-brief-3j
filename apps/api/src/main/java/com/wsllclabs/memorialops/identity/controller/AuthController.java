@@ -13,7 +13,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,11 +28,18 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final CurrentUserService currentUserService;
-    private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
+    private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
+    private final SecurityContextRepository securityContextRepository;
 
-    public AuthController(AuthenticationManager authenticationManager, CurrentUserService currentUserService) {
+    public AuthController(
+            AuthenticationManager authenticationManager,
+            CurrentUserService currentUserService,
+            SessionAuthenticationStrategy sessionAuthenticationStrategy,
+            SecurityContextRepository securityContextRepository) {
         this.authenticationManager = authenticationManager;
         this.currentUserService = currentUserService;
+        this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
+        this.securityContextRepository = securityContextRepository;
     }
 
     @GetMapping("/csrf")
@@ -41,7 +48,9 @@ public class AuthController {
         String token = csrfToken.getToken();
         if (request.getCookies() != null) {
             for (var cookie : request.getCookies()) {
-                if ("XSRF-TOKEN".equals(cookie.getName()) && cookie.getValue() != null && !cookie.getValue().isBlank()) {
+                if ("XSRF-TOKEN".equals(cookie.getName())
+                        && cookie.getValue() != null
+                        && !cookie.getValue().isBlank()) {
                     token = cookie.getValue();
                     break;
                 }
@@ -59,6 +68,7 @@ public class AuthController {
         SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
         securityContext.setAuthentication(authentication);
         SecurityContextHolder.setContext(securityContext);
+        sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
         securityContextRepository.saveContext(securityContext, request, response);
         return currentUserService.forUsername(authentication.getName());
     }

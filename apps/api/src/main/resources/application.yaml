@@ -52,11 +52,15 @@ management:
 
 springdoc:
   api-docs:
+    enabled: false
     path: /v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui
 
 app:
+  docs:
+    enabled: false
   integrations:
     registry:
       base-url: ${REGISTRY_BASE_URL:http://applicant-registry:8080}
@@ -88,9 +92,9 @@ app:
       username: ${SFTP_USERNAME:feed}
       password: ${SFTP_PASSWORD:feedpass}
     storage:
-      endpoint: ${MINIO_ENDPOINT:http://minio:9000}
-      access-key: ${MINIO_ACCESS_KEY:minio}
-      secret-key: ${MINIO_SECRET_KEY:minio123456}
+      endpoint: ${RUSTFS_ENDPOINT:${MINIO_ENDPOINT:http://rustfs:9000}}
+      access-key: ${RUSTFS_ACCESS_KEY:${MINIO_ACCESS_KEY:}}
+      secret-key: ${RUSTFS_SECRET_KEY:${MINIO_SECRET_KEY:}}
       attachments-bucket: attachments
       permits-bucket: permits
       path-style: true
@@ -103,6 +107,27 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/memorialops}
     username: ${SPRING_DATASOURCE_USERNAME:memorial}
     password: ${SPRING_DATASOURCE_PASSWORD:memorial}
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+app:
+  docs:
+    enabled: true
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+app:
+  docs:
+    enabled: true
 ---
 spring:
   config:
@@ -111,6 +136,20 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+  session:
+    store-type: none
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.session.autoconfigure.SessionAutoConfiguration
+      - org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionAutoConfiguration
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+app:
+  docs:
+    enabled: true
 ---
 spring:
   config:
@@ -125,6 +164,7 @@ server:
     session:
       cookie:
         secure: true
+        same-site: strict
 app:
   integrations:
     storage:

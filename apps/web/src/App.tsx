@@ -1,21 +1,51 @@
-import { Navigate, Route, Routes } from "react-router";
+import { useLayoutEffect, useState } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { AuthProvider } from "./lib/auth";
-import { RequireAuth } from "./pages/AppShell";
+import { RequireAuth, RequireCapability } from "./pages/AppShell";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ForbiddenPage } from "./pages/ForbiddenPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SkeletonPage } from "./pages/SkeletonPage";
 
+function RouteAnnouncer() {
+  const location = useLocation();
+  const [announcement, setAnnouncement] = useState("Memorial Event Operations");
+
+  useLayoutEffect(() => {
+    const heading = document.querySelector("h1");
+    const label = heading?.textContent?.trim() || "Memorial Event Operations";
+    document.title = `${label} · Memorial Event Operations`;
+    setAnnouncement(label);
+    if (heading instanceof HTMLElement) {
+      heading.tabIndex = -1;
+      heading.focus();
+    }
+  }, [location.pathname]);
+
+  return (
+    <div className="sr-only" aria-live="polite" aria-atomic="true">
+      {announcement}
+    </div>
+  );
+}
+
 export function App() {
   return (
     <AuthProvider>
+      <RouteAnnouncer />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/403" element={<ForbiddenPage />} />
         <Route element={<RequireAuth />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <RequireCapability capability="DASHBOARD_VIEW">
+                <DashboardPage />
+              </RequireCapability>
+            }
+          />
           <Route path="/applications/new/:step" element={<SkeletonPage />} />
           <Route path="/applications/:id" element={<SkeletonPage />} />
           <Route path="/applications" element={<SkeletonPage />} />
@@ -43,8 +73,9 @@ export function App() {
           <Route path="/integrations/geo" element={<SkeletonPage />} />
           <Route path="/integrations" element={<SkeletonPage />} />
           <Route path="/documents" element={<SkeletonPage />} />
+          <Route path="/403" element={<ForbiddenPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
-        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AuthProvider>
   );

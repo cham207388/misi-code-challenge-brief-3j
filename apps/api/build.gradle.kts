@@ -44,3 +44,63 @@ tasks.named<ProcessResources>("processResources") {
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     args("--spring.profiles.active=local")
 }
+
+tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags("integration")
+    }
+}
+
+val integrationTest =
+    tasks.register<Test>("integrationTest") {
+        description = "Runs Testcontainers integration tests against a reusable Postgres."
+        group = "verification"
+        testClassesDirs = sourceSets.test.get().output.classesDirs
+        classpath = sourceSets.test.get().runtimeClasspath
+        shouldRunAfter(tasks.test)
+        useJUnitPlatform {
+            includeTags("integration")
+        }
+    }
+
+tasks.named("check") {
+    dependsOn(integrationTest)
+}
+
+val jacocoExec =
+    files(
+        layout.buildDirectory.file("jacoco/test.exec"),
+        layout.buildDirectory.file("jacoco/integrationTest.exec"),
+    )
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test, integrationTest)
+    executionData.setFrom(jacocoExec)
+}
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.jacocoTestReport)
+    executionData.setFrom(jacocoExec)
+    violationRules {
+        rule {
+            element = "PACKAGE"
+            includes =
+                listOf(
+                    "com.wsllclabs.memorialops.identity.service",
+                    "com.wsllclabs.memorialops.identity.controller",
+                    "com.wsllclabs.memorialops.identity.dto",
+                    "com.wsllclabs.memorialops.exception",
+                    "com.wsllclabs.memorialops.shared.health",
+                )
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(tasks.jacocoTestCoverageVerification)
+}

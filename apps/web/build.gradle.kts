@@ -3,7 +3,7 @@ plugins {
 }
 
 node {
-    version.set("22.14.0")
+    version.set("24.21.0")
     download.set(false)
     nodeProjectDir.set(layout.projectDirectory)
 }

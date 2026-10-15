@@ -35,7 +35,8 @@ public record AppProperties(Integrations integrations) {
             @DefaultValue("2s") Duration connectTimeout,
             @DefaultValue("5s") Duration readTimeout) {}
 
-    public record PartnerFeedProperties(String host, @DefaultValue("22") int port, String username, String password) {}
+    public record PartnerFeedProperties(
+            String host, @DefaultValue("22") int port, String username, String password) {}
 
     public record StorageProperties(
             String endpoint,

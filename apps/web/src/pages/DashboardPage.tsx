@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { ErrorBanner } from "../lib/errors";
 
 type Health = { status: string; components: Record<string, string> };
 
@@ -20,6 +21,7 @@ export function DashboardPage() {
         Welcome, {me?.displayName}. Calculated KPI cards arrive with the reporting slice. This skeleton shows live
         platform health so the walking demo is more than a static landing page.
       </p>
+      {health.error ? <ErrorBanner error={health.error} fallback="Unable to load platform health" /> : null}
       <section className="mt-6 grid gap-4 md:grid-cols-3">
         <article className="rounded-2xl border border-forest/10 bg-parchment p-5">
           <h2 className="text-sm uppercase tracking-wide text-moss">Application health</h2>

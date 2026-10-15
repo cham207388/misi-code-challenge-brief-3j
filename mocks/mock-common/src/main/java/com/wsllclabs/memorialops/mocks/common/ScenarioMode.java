@@ -27,10 +27,11 @@ public enum ScenarioMode {
             case "409", "CONFLICT" -> CONFLICT;
             case "429", "RATE_LIMITED" -> RATE_LIMITED;
             case "500", "SERVER_ERROR" -> SERVER_ERROR;
-            default -> Arrays.stream(values())
-                    .filter(mode -> mode.name().equals(normalized))
-                    .findFirst()
-                    .orElse(SUCCESS);
+            default ->
+                Arrays.stream(values())
+                        .filter(mode -> mode.name().equals(normalized))
+                        .findFirst()
+                        .orElse(SUCCESS);
         };
     }
 }

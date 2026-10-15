@@ -39,3 +39,8 @@ variable "use_spot" {
   type    = bool
   default = false
 }
+
+variable "permissions_boundary_arn" {
+  type    = string
+  default = ""
+}

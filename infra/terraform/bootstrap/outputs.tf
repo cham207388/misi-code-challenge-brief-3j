@@ -9,3 +9,11 @@ output "gha_role_arns" {
 output "oidc_provider_arn" {
   value = local.oidc_provider_arn
 }
+
+output "ecs_permissions_boundary_arn" {
+  value = aws_iam_policy.ecs_permissions_boundary.arn
+}
+
+output "deploy_permissions_boundary_arn" {
+  value = aws_iam_policy.deploy_boundary.arn
+}
