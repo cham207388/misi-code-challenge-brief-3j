@@ -96,11 +96,7 @@ function AppShell() {
             <button
               type="button"
               className="mt-3 rounded-md border border-gold/40 px-3 py-1.5 text-gold"
-              onClick={() => {
-                void logout().then(() => {
-                  window.location.assign("/login?signedOut=1");
-                });
-              }}
+              onClick={() => void logout("/login?signedOut=1")}
             >
               Sign out
             </button>

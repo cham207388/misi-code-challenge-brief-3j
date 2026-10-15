@@ -15,7 +15,7 @@ type AuthState = {
   me: Me | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (redirectTo?: string) => Promise<void>;
   refresh: () => Promise<void>;
   hasCapability: (capability: string) => boolean;
 };
@@ -62,13 +62,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         setMe(user);
       },
-      logout: async () => {
+      logout: async (redirectTo?: string) => {
         try {
           await api<void>("/api/auth/logout", { method: "POST" });
-        } finally {
-          clearCsrf();
-          setMe(null);
+        } catch {
+          // still clear the local session
         }
+        clearCsrf();
+        if (redirectTo) {
+          window.location.assign(redirectTo);
+          return;
+        }
+        setMe(null);
       },
       refresh: async () => {
         const user = await api<Me>("/api/me");
@@ -85,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <SessionExpiryToast
         expiresAt={me?.sessionExpiresAt}
         onStaySignedIn={value.refresh}
-        onSignOut={value.logout}
+        onSignOut={() => value.logout("/login?signedOut=1")}
       />
     </AuthContext.Provider>
   );
