@@ -25,6 +25,8 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -73,13 +75,20 @@ public class SecurityConfig {
     }
 
     @Bean
+    SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
+    }
+
+    @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             CookieCsrfTokenRepository csrfTokenRepository,
+            SecurityContextRepository securityContextRepository,
             @Value("${app.docs.enabled:false}") boolean docsEnabled)
             throws Exception {
         http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
+                .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(
                                     "/api/auth/login",

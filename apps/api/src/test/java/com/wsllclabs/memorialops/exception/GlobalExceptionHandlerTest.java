@@ -47,4 +47,17 @@ class GlobalExceptionHandlerTest {
                 .containsEntry("correlationId", "corr-auth")
                 .containsEntry("allowedTransitions", java.util.List.of("SUBMIT"));
     }
+
+    @Test
+    void staleAndConstraintHandlersIncludeCorrelationId() {
+        MDC.put(CorrelationIdFilter.MDC_KEY, "corr-more");
+        ResponseEntity<ProblemDetail> stale =
+                handler.stale(new org.springframework.orm.ObjectOptimisticLockingFailureException(String.class, "1"));
+        assertThat(stale.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(stale.getBody().getProperties()).containsEntry("correlationId", "corr-more");
+        ProblemDetail constraints =
+                handler.constraintViolation(new jakarta.validation.ConstraintViolationException(java.util.Set.of()));
+        assertThat(constraints.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(constraints.getProperties()).containsEntry("correlationId", "corr-more");
+    }
 }

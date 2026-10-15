@@ -136,6 +136,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+  session:
+    store-type: none
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.session.autoconfigure.SessionAutoConfiguration
+      - org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionAutoConfiguration
 springdoc:
   api-docs:
     enabled: true

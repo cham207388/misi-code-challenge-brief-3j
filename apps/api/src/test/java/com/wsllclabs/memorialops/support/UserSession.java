@@ -25,14 +25,16 @@ public final class UserSession {
 
     public static Authenticated login(MockMvc mockMvc, String username, String password) throws Exception {
         MockHttpSession session = csrfSession(mockMvc);
-        mockMvc.perform(post("/api/auth/login")
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .session(session)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(LoginRequestBuilder.forUser(username)
                                 .password(password)
                                 .json()))
-                .andExpect(status().isOk());
-        return new Authenticated(session, username);
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession authenticated = (MockHttpSession) result.getRequest().getSession(false);
+        return new Authenticated(authenticated != null ? authenticated : session, username);
     }
 }

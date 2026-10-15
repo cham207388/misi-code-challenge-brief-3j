@@ -14,7 +14,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,15 +29,17 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final CurrentUserService currentUserService;
     private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
-    private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
+    private final SecurityContextRepository securityContextRepository;
 
     public AuthController(
             AuthenticationManager authenticationManager,
             CurrentUserService currentUserService,
-            SessionAuthenticationStrategy sessionAuthenticationStrategy) {
+            SessionAuthenticationStrategy sessionAuthenticationStrategy,
+            SecurityContextRepository securityContextRepository) {
         this.authenticationManager = authenticationManager;
         this.currentUserService = currentUserService;
         this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
+        this.securityContextRepository = securityContextRepository;
     }
 
     @GetMapping("/csrf")

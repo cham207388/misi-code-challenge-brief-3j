@@ -45,6 +45,16 @@ class MemorialOpsIT extends AbstractIntegrationTest {
                                 .json()))
                 .andExpect(status().isUnauthorized());
 
+        mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"\",\"password\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/auth/csrf").cookie(new jakarta.servlet.http.Cookie("XSRF-TOKEN", "cookie-token")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("cookie-token"));
+
         MvcResult spa = mockMvc.perform(get("/applications/demo-case"))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -58,15 +68,18 @@ class MemorialOpsIT extends AbstractIntegrationTest {
     void loginChangesSessionId() throws Exception {
         MockHttpSession before = UserSession.csrfSession(mockMvc);
         String previousId = before.getId();
-        mockMvc.perform(post("/api/auth/login")
+        MvcResult login = mockMvc.perform(post("/api/auth/login")
                         .session(before)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(LoginRequestBuilder.forUser(TestUsers.COORDINATOR.username())
                                 .password(TestUsers.COORDINATOR.password())
                                 .json()))
-                .andExpect(status().isOk());
-        assertThat(before.getId()).isNotEqualTo(previousId);
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession after = (MockHttpSession) login.getRequest().getSession(false);
+        assertThat(after).isNotNull();
+        assertThat(after.getId()).isNotEqualTo(previousId);
     }
 
     @Test
