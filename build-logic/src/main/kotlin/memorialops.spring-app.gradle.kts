@@ -4,6 +4,10 @@ plugins {
     id("io.spring.dependency-management")
 }
 
+tasks.named<Jar>("jar") {
+    enabled = false
+}
+
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     layered {
         enabled = true

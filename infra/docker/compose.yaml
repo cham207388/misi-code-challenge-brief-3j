@@ -19,7 +19,7 @@ services:
       retries: 20
 
   minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: minio/minio:latest
     profiles: [core, full]
     command: server /data --console-address ":9001"
     environment:
@@ -31,10 +31,11 @@ services:
     volumes:
       - miniodata:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 20
+      start_period: 15s
 
   minio-init:
     image: minio/mc:latest

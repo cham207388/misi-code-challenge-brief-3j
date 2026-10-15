@@ -46,6 +46,8 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
+*.tsbuildinfo
+
 # Test / coverage
 coverage/
 .nyc_output/

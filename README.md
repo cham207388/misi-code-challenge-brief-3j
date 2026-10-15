@@ -9,13 +9,14 @@ Sprint 0 delivers a walking skeleton: build, image, Compose, Flyway baseline, he
 ## Prerequisites
 
 - Docker and Docker Compose
-- Optional for host builds: JDK 25, Node 22, Terraform ≥ 1.11
+- JDK 25 and Node 22 (`make up` / `make image` compile bootJars on the host, then copy them into slim JRE images)
+- Optional: Terraform ≥ 1.11
 
 ## Clean-machine run
 
 ```bash
 make init          # copies .env.example → .env
-make up            # builds images, starts Postgres, MinIO, SFTP, mocks and the app
+make up            # ./gradlew bootJar, then Compose (Postgres, MinIO, SFTP, mocks, app)
 # wait until http://localhost:8080/actuator/health/readiness returns UP
 make test          # Gradle unit + Testcontainers tests
 make e2e           # Playwright smoke against the running stack
@@ -91,7 +92,7 @@ GitHub Actions uses OIDC roles `brief3-gha-plan`, `brief3-gha-ecr-push`, `brief3
 
 ## Makefile targets
 
-`init`, `up`, `up-core`, `down`, `reset`, `logs`, `test`, `verify`, `e2e`, `image`, `lint`, `tf-fmt`, `tf-validate`, `tf-plan`, `screenshots`, `bundle`.
+`init`, `jars`, `up`, `up-core`, `down`, `reset`, `logs`, `test`, `verify`, `e2e`, `image`, `lint`, `tf-fmt`, `tf-validate`, `tf-plan`, `screenshots`, `bundle`.
 
 ## Submission
 

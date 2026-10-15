@@ -3,16 +3,19 @@ TF_LIVE := infra/terraform/live
 TF_BOOT := infra/terraform/bootstrap
 ENV ?= dev
 
-.PHONY: init up up-core down reset logs test verify e2e image lint tf-fmt tf-validate tf-plan screenshots bundle
+.PHONY: init jars up up-core down reset logs test verify e2e image lint tf-fmt tf-validate tf-plan screenshots bundle
 
 init:
 	@test -f .env || cp .env.example .env
 	@chmod +x infra/docker/minio-init.sh
 
-up: init
+jars:
+	./gradlew bootJar
+
+up: init jars
 	$(COMPOSE) --profile full up -d --build
 
-up-core: init
+up-core: init jars
 	$(COMPOSE) --profile core up -d --build
 
 down:
@@ -33,7 +36,7 @@ verify:
 e2e:
 	cd e2e && npm ci && npx playwright test
 
-image:
+image: jars
 	docker build -f infra/docker/Dockerfile.app -t brief3/app:$${IMAGE_TAG:-local} .
 
 lint:

@@ -10,10 +10,10 @@ CREATE TABLE role (
 
 CREATE TABLE app_user (
     id uuid PRIMARY KEY,
-    username citext NOT NULL UNIQUE,
+    username varchar(255) NOT NULL UNIQUE,
     password_hash text NOT NULL,
     display_name text NOT NULL,
-    email citext NOT NULL,
+    email varchar(255) NOT NULL,
     active boolean NOT NULL DEFAULT true,
     version bigint NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -122,7 +122,7 @@ CREATE TABLE event_category (
 CREATE TABLE applicant (
     id uuid PRIMARY KEY,
     full_name text NOT NULL,
-    email citext,
+    email varchar(255),
     phone text,
     organization text,
     registry_reference text,

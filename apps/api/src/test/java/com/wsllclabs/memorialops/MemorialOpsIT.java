@@ -1,29 +1,28 @@
 package com.wsllclabs.memorialops;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.wsllclabs.memorialops.identity.dto.CsrfResponse;
-import com.wsllclabs.memorialops.identity.dto.MeResponse;
-import com.wsllclabs.memorialops.shared.health.HealthSummary;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureTestRestTemplate
+@SpringBootTest
+@AutoConfigureMockMvc
 @Testcontainers
 @ActiveProfiles("test")
 class MemorialOpsIT {
@@ -33,46 +32,38 @@ class MemorialOpsIT {
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
     @Autowired
-    private TestRestTemplate testRestTemplate;
+    private MockMvc mockMvc;
 
     @Test
-    void healthLoginAndSpaFallback() {
-        ResponseEntity<HealthSummary> health = testRestTemplate.getForEntity("/api/health", HealthSummary.class);
-        assertThat(health.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(health.getHeaders().getFirst("X-Correlation-ID")).isNotBlank();
-        assertThat(health.getBody()).isNotNull();
-        assertThat(health.getBody().status()).isEqualTo("UP");
+    void healthLoginAndSpaFallback() throws Exception {
+        mockMvc.perform(get("/api/health"))
+                .andExpect(status().isOk())
+                .andExpect(header().exists("X-Correlation-ID"))
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.components.db").value("UP"));
 
-        ResponseEntity<String> liveness = testRestTemplate.getForEntity("/actuator/health/liveness", String.class);
-        assertThat(liveness.getStatusCode()).isEqualTo(HttpStatus.OK);
+        mockMvc.perform(get("/actuator/health/liveness")).andExpect(status().isOk());
+        mockMvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
 
-        ResponseEntity<CsrfResponse> csrf = testRestTemplate.getForEntity("/api/auth/csrf", CsrfResponse.class);
-        assertThat(csrf.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(csrf.getBody()).isNotNull();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-XSRF-TOKEN", csrf.getBody().token());
-        String setCookie = csrf.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
-        if (setCookie != null) {
-            headers.add(HttpHeaders.COOKIE, setCookie);
-        }
+        mockMvc.perform(get("/api/auth/csrf"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
 
-        ResponseEntity<MeResponse> login = testRestTemplate.postForEntity(
-                "/api/auth/login",
-                new HttpEntity<>("{\"username\":\"coordinator\",\"password\":\"Coordinator!2026\"}", headers),
-                MeResponse.class);
-        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(login.getBody()).isNotNull();
-        assertThat(login.getBody().username()).isEqualTo("coordinator");
+        mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"coordinator\",\"password\":\"Coordinator!2026\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("coordinator"))
+                .andExpect(jsonPath("$.capabilities").isArray());
 
-        ResponseEntity<String> denied = testRestTemplate.postForEntity(
-                "/api/auth/login",
-                new HttpEntity<>("{\"username\":\"coordinator\",\"password\":\"wrong\"}", headers),
-                String.class);
-        assertThat(denied.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"coordinator\",\"password\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized());
 
-        ResponseEntity<String> spa =
-                testRestTemplate.exchange("/applications/demo-case", HttpMethod.GET, HttpEntity.EMPTY, String.class);
-        assertThat(spa.getStatusCode()).isEqualTo(HttpStatus.OK);
+        MvcResult spa = mockMvc.perform(get("/applications/demo-case")).andExpect(status().isOk()).andReturn();
+        assertThat(spa.getResponse().getForwardedUrl()).isEqualTo("/index.html");
     }
 }

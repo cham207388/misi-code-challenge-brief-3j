@@ -9,7 +9,7 @@ allprojects {
 
 spotless {
     java {
-        target("apps/**/src/**/*.java", "mocks/**/src/**/*.java")
+        target("apps/*/src/**/*.java", "mocks/*/src/**/*.java")
         palantirJavaFormat(libs.versions.palantir.java.format.get())
         removeUnusedImports()
         trimTrailingWhitespace()
