@@ -5,10 +5,12 @@
 ```bash
 make init
 make up          # full stack
-make up-core     # app + postgres + minio
+make up-core     # app + postgres + object storage
 make down
 make logs SERVICE=app
 ```
+
+Local object storage is `rustfs/rustfs` (S3 API on :9000). If containers can resolve each other but TCP times out, Docker bridge ICC is being filtered (`net.bridge.bridge-nf-call-iptables=1`). Published ports still work; `sudo sysctl -w net.bridge.bridge-nf-call-iptables=0` restores container-to-container traffic on that host.
 
 ## Rollback (cloud, later)
 

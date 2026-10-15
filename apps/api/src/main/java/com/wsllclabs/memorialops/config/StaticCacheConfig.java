@@ -15,7 +15,7 @@ public class StaticCacheConfig implements WebMvcConfigurer {
                 .addResourceLocations("classpath:/static/assets/")
                 .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic());
         registry.addResourceHandler("/index.html")
-                .addResourceLocations("classpath:/static/index.html")
+                .addResourceLocations("classpath:/static/")
                 .setCacheControl(CacheControl.noStore());
     }
 }
