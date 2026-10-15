@@ -59,5 +59,21 @@ class GlobalExceptionHandlerTest {
                 handler.constraintViolation(new jakarta.validation.ConstraintViolationException(java.util.Set.of()));
         assertThat(constraints.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(constraints.getProperties()).containsEntry("correlationId", "corr-more");
+        ResponseEntity<ProblemDetail> conflict =
+                handler.conflict(new ConflictException("stale", 4, java.util.Map.of("version", 4)));
+        assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(conflict.getBody().getProperties())
+                .containsEntry("version", 4L)
+                .containsEntry("etag", "\"4\"");
+        assertThat(handler.notFound(new NotFoundException("gone")).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(handler.rateLimited(new RateLimitedException("slow")).getStatusCode())
+                .isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(handler.separationOfDuties(new SeparationOfDutiesException("no"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(handler.requestValidation(new RequestValidationException("bad"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 }

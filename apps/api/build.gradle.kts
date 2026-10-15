@@ -91,6 +91,10 @@ tasks.jacocoTestCoverageVerification {
                     "com.wsllclabs.memorialops.identity.dto",
                     "com.wsllclabs.memorialops.exception",
                     "com.wsllclabs.memorialops.shared.health",
+                    "com.wsllclabs.memorialops.application",
+                    "com.wsllclabs.memorialops.workflow",
+                    "com.wsllclabs.memorialops.audit",
+                    "com.wsllclabs.memorialops.shared.reference",
                 )
             limit {
                 counter = "LINE"

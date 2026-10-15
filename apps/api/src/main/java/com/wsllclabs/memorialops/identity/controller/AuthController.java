@@ -4,11 +4,14 @@ import com.wsllclabs.memorialops.identity.dto.CsrfResponse;
 import com.wsllclabs.memorialops.identity.dto.LoginRequest;
 import com.wsllclabs.memorialops.identity.dto.MeResponse;
 import com.wsllclabs.memorialops.identity.service.CurrentUserService;
+import com.wsllclabs.memorialops.identity.service.LoginAttemptService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -30,16 +33,19 @@ public class AuthController {
     private final CurrentUserService currentUserService;
     private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
     private final SecurityContextRepository securityContextRepository;
+    private final LoginAttemptService loginAttemptService;
 
     public AuthController(
             AuthenticationManager authenticationManager,
             CurrentUserService currentUserService,
             SessionAuthenticationStrategy sessionAuthenticationStrategy,
-            SecurityContextRepository securityContextRepository) {
+            SecurityContextRepository securityContextRepository,
+            LoginAttemptService loginAttemptService) {
         this.authenticationManager = authenticationManager;
         this.currentUserService = currentUserService;
         this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
         this.securityContextRepository = securityContextRepository;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @GetMapping("/csrf")
@@ -63,13 +69,20 @@ public class AuthController {
     @PreAuthorize("permitAll()")
     public MeResponse login(
             @Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password()));
-        SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
-        securityContext.setAuthentication(authentication);
-        SecurityContextHolder.setContext(securityContext);
-        sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
-        securityContextRepository.saveContext(securityContext, request, response);
-        return currentUserService.forUsername(authentication.getName());
+        loginAttemptService.guard(loginRequest.username());
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password()));
+            SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+            securityContext.setAuthentication(authentication);
+            SecurityContextHolder.setContext(securityContext);
+            sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
+            securityContextRepository.saveContext(securityContext, request, response);
+            loginAttemptService.recordSuccess(loginRequest.username());
+            return currentUserService.forUsername(authentication.getName());
+        } catch (BadCredentialsException | DisabledException exception) {
+            loginAttemptService.recordFailure(loginRequest.username());
+            throw exception;
+        }
     }
 }

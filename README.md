@@ -4,7 +4,7 @@ Fictional internal case-management app for cemetery event permits (VA MISI Mock 
 
 **Stack (documented deviation from the brief's .NET preference — [ADR-001](docs/adr/001-stack-deviation.md)):** React 19 + TypeScript + Vite · Java 25 + Spring Boot 4.1 · Gradle 9 version catalog · PostgreSQL 17 · RustFS · Docker Compose · Terraform on AWS us-east-1 · GitHub Actions with OIDC.
 
-Sprint 0 delivers a walking skeleton: build, image, Compose, Flyway baseline, health, login, routed app shell, CI workflows and Terraform modules. Domain workflow and the 26 live pages arrive in later sprints.
+Sprint 1 adds the identity, audit and workflow core: session login with throttling, append-only `audit_event`, `APP-YYYY-NNNNN` references, a transition-table state machine, ETag/`If-Match` conflicts, and the intake wizard plus application register. The remaining domain pages stay on the skeleton routes.
 
 ## Prerequisites
 
@@ -90,6 +90,20 @@ make tf-validate                 # safe, no AWS calls beyond provider install
 ```
 
 GitHub Actions uses OIDC roles `brief3-gha-plan`, `brief3-gha-ecr-push`, `brief3-gha-deploy-dev` and `brief3-gha-deploy-prod`. No static AWS keys. Store role ARNs as GitHub variables when bootstrap has been applied.
+
+## Sprint 1 API (selected)
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/api/applications` | Intake draft; returns ETag |
+| GET | `/api/applications` | Server page of 20, `status` filter |
+| GET | `/api/applications/{id}` | ETag; auditor/attendant projections hide PII |
+| PATCH | `/api/applications/{id}` | Draft autosave; requires `If-Match` |
+| GET | `/api/applications/{id}/actions` | Enabled transitions + reasons |
+| POST | `/api/applications/{id}/transitions` | State machine; 422/409/403 as specified |
+| GET | `/api/lookups/cemeteries` | Seeded Oakridge / Lakeside |
+
+Stale writes return `409` `urn:memorial-ops:conflict` with `version`, `etag` and `current`. Invalid from/to pairs return `422` `urn:memorial-ops:invalid-transition`.
 
 ## Makefile targets
 

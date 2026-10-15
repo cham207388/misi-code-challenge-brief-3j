@@ -3,6 +3,12 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly detail: string,
     public readonly correlationId: string,
+    public readonly type = "",
+    public readonly allowedTransitions: string[] = [],
+    public readonly current: Record<string, unknown> | null = null,
+    public readonly version: number | null = null,
+    public readonly etag = "",
+    public readonly fieldErrors: string[] = [],
   ) {
     super(detail);
   }
@@ -49,14 +55,16 @@ export async function ensureCsrf(): Promise<string> {
   if (!response.ok) {
     throw new ApiError(response.status, "Unable to start a secure session", response.headers.get("X-Correlation-ID") ?? "");
   }
-  // CookieCsrfTokenRepository stores the raw token; the XOR request handler
-  // encodes getToken() for the request attribute. Echo the cookie value.
   csrfToken = readCookie("XSRF-TOKEN");
   if (!csrfToken) {
     const body = (await response.json()) as { token: string };
     csrfToken = body.token;
   }
   return csrfToken;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -68,7 +76,16 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.method && init.method !== "GET") {
     headers.set("X-XSRF-TOKEN", await ensureCsrf());
   }
-  const response = await fetch(path, { ...init, headers, credentials: "include" });
+  const idempotency = headers.get("Idempotency-Key") ?? (init.method && init.method !== "GET" ? crypto.randomUUID() : null);
+  if (idempotency && !headers.has("Idempotency-Key")) {
+    headers.set("Idempotency-Key", idempotency);
+  }
+  let response: Response;
+  try {
+    response = await fetch(path, { ...init, headers, credentials: "include" });
+  } catch {
+    throw new ApiError(0, "Network error. Check your connection and retry.", "");
+  }
   const correlationId = response.headers.get("X-Correlation-ID") ?? "";
   if (response.status === 204) {
     return undefined as T;
@@ -78,7 +95,17 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     redirectToLogin(response.status, path);
     const detail = typeof payload.detail === "string" ? payload.detail : "Request failed";
-    throw new ApiError(response.status, detail, correlationId);
+    throw new ApiError(
+      response.status,
+      detail,
+      typeof payload.correlationId === "string" ? payload.correlationId : correlationId,
+      typeof payload.type === "string" ? payload.type : "",
+      asStringArray(payload.allowedTransitions),
+      payload.current && typeof payload.current === "object" ? (payload.current as Record<string, unknown>) : null,
+      typeof payload.version === "number" ? payload.version : null,
+      typeof payload.etag === "string" ? payload.etag : response.headers.get("ETag") ?? "",
+      asStringArray(payload.errors),
+    );
   }
   return payload as T;
 }

@@ -34,6 +34,28 @@ Scaffolded the Memorial Event Operations walking skeleton from `docs/plan.md` an
 
 Implemented with an AI coding agent under the plan's master build prompt. No `terraform apply` and no AWS mutations were performed.
 
+## 2026-10-15 — Sprint 1 identity, workflow, data
+
+Branched from `main` after the Sprint 0 review-fixes merge (`4bcf0f1`).
+
+**Done against story IDs**
+
+- BE-2.2 / BE-2.3 / BE-2.4: append-only audit (trigger + `AuditService.append` in the aggregate transaction), `APP-YYYY-NNNNN` / `PER-YYYY-NNNNN` counters, `@Version` + ETag/`If-Match` and a 409 body with `version`, `etag` and `current`
+- BE-3.1–3.4: session login throttle (5/min/user), `/api/me` capabilities, `@PreAuthorize` + `CasePolicy` (own cases, Eligible+ for scheduler, assigned attendants, redacted auditor PII), Admin cannot approve, SoD `urn:memorial-ops:separation-of-duties`
+- BE-4.1–4.3: transition table, status history + audit atomicity (rollback hook test), `/api/applications/{id}/actions`
+- BE-18.1 (skeleton): local/demo seeder for one complete draft
+- UX-1.4–1.7: problem+json client, 403/404/422/409 UI, RHF+Zod login and wizard, URL-encoded register filters, resume route `/applications/new/:step`
+- TA-2.1 / TA-3.1 / TA-3.2: parameterized transition pairs, audit trigger + rollback IT, role × endpoint matrix
+- DO-5.2 / DO-5.3 / DO-10.1: unchanged from Sprint 0 (`terraform-plan.yml`, `deploy.yml` for dev, basic health/logs)
+
+**Decisions**
+
+- Application status values are stored as enum names (`DRAFT`, `SUBMITTED`, …) with CHECK constraints in `V003__workflow_integrity.sql`
+- Unknown from/to pairs return 422; a known pair with the wrong role returns 403
+- `AuditService.append` is `Propagation.MANDATORY` so it cannot commit outside the caller's transaction
+- Scheduler list/detail is Eligible+; Intake list is own cases only
+- No AWS apply. Terraform plan workflow remains the PR check.
+
 **Verification (2026-10-15)**
 
 - `./gradlew :apps:api:test` green (ArchitectureTest ×3, ModularityTests, MemorialOpsIT)

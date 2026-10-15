@@ -1,9 +1,21 @@
-import { useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "motion/react";
 import { ApiError, safeReturnUrl } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { ErrorBanner } from "../lib/errors";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+
+const schema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type Values = z.infer<typeof schema>;
 
 export function LoginPage() {
   const { me, login } = useAuth();
@@ -11,28 +23,13 @@ export function LoginPage() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const from = safeReturnUrl(params.get("returnUrl") ?? (location.state as { from?: string } | null)?.from ?? "/dashboard");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<unknown>(null);
-  const [pending, setPending] = useState(false);
-  const invalid = Boolean(error);
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: { username: "", password: "" },
+  });
 
   if (me) {
     return <Navigate to={from} replace />;
-  }
-
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
-      await login(username, password);
-      navigate(from, { replace: true });
-    } catch (cause) {
-      setError(cause instanceof ApiError ? cause : new Error("Unable to sign in"));
-    } finally {
-      setPending(false);
-    }
   }
 
   return (
@@ -47,55 +44,60 @@ export function LoginPage() {
           </p>
         </section>
         <motion.form
-          onSubmit={onSubmit}
+          onSubmit={form.handleSubmit(async (values) => {
+            try {
+              await login(values.username, values.password);
+              navigate(from, { replace: true });
+            } catch (cause) {
+              form.setError("root", {
+                message: cause instanceof ApiError ? cause.detail : "Unable to sign in",
+              });
+            }
+          })}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
           className="w-full max-w-md rounded-2xl bg-parchment p-6 text-ink shadow-xl"
           aria-labelledby="login-heading"
+          noValidate
         >
           <h2 id="login-heading" className="font-serif text-2xl">
             Staff sign in
           </h2>
+          {form.formState.errors.root || form.formState.errors.username || form.formState.errors.password ? (
+            <div tabIndex={-1} className="mt-4 rounded-md bg-clay/10 px-3 py-2 text-sm text-clay" role="alert">
+              {form.formState.errors.root?.message ?? "Enter a username and password."}
+            </div>
+          ) : null}
           <div className="mt-5 space-y-4">
-            <label className="block text-sm font-medium" htmlFor="username">
+            <Label htmlFor="username">
               Username
-              <input
+              <Input
                 id="username"
-                className="mt-1 w-full rounded-lg border border-slate/30 bg-white px-3 py-2"
-                name="username"
                 autoComplete="username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                required
-                aria-invalid={invalid}
-                aria-describedby={invalid ? "login-error" : undefined}
+                aria-invalid={Boolean(form.formState.errors.username || form.formState.errors.root)}
+                aria-describedby={form.formState.errors.root ? "login-error" : undefined}
+                {...form.register("username")}
               />
-            </label>
-            <label className="block text-sm font-medium" htmlFor="password">
+            </Label>
+            <Label htmlFor="password">
               Password
-              <input
+              <Input
                 id="password"
-                className="mt-1 w-full rounded-lg border border-slate/30 bg-white px-3 py-2"
                 type="password"
-                name="password"
                 autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                aria-invalid={invalid}
-                aria-describedby={invalid ? "login-error" : undefined}
+                aria-invalid={Boolean(form.formState.errors.password || form.formState.errors.root)}
+                aria-describedby={form.formState.errors.root ? "login-error" : undefined}
+                {...form.register("password")}
               />
-            </label>
+            </Label>
           </div>
-          {error ? <ErrorBanner id="login-error" error={error} fallback="Unable to sign in" /> : null}
-          <button
-            type="submit"
-            disabled={pending}
-            className="mt-6 w-full rounded-lg bg-forest px-4 py-2.5 font-medium text-parchment disabled:opacity-60"
-          >
-            {pending ? "Signing in…" : "Sign in"}
-          </button>
+          {form.formState.errors.root ? (
+            <ErrorBanner id="login-error" error={new ApiError(401, form.formState.errors.root.message ?? "Unable to sign in", "")} fallback="Unable to sign in" />
+          ) : null}
+          <Button type="submit" disabled={form.formState.isSubmitting} className="mt-6 w-full">
+            {form.formState.isSubmitting ? "Signing in…" : "Sign in"}
+          </Button>
         </motion.form>
       </div>
     </main>
