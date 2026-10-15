@@ -92,6 +92,23 @@ jobs:
           make tf-apply ENV=dev
         env:
           IMAGE_TAG: ${{ needs.publish.outputs.image_tag }}
+      - name: Wait for ECS
+        if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN != '' }}
+        run: aws ecs wait services-stable --cluster brief3-dev-cluster --services brief3-dev-app
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
+        if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN != '' }}
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Post-deploy smoke
+        if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN != '' }}
+        run: make deploy-smoke
+        env:
+          BASE_URL: https://brief3-dev.wsllclabs.com
+      - name: Smoke deferred without OIDC
+        if: ${{ vars.AWS_DEPLOY_DEV_ROLE_ARN == '' }}
+        run: echo "Post-deploy Playwright smoke waits for OIDC deploy roles. CI e2e is the Sprint 1 smoke gate."
 
   deploy-prod:
     needs: [publish, deploy-dev]

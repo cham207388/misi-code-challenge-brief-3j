@@ -5,6 +5,7 @@ import com.wsllclabs.memorialops.identity.dto.LoginRequest;
 import com.wsllclabs.memorialops.identity.dto.MeResponse;
 import com.wsllclabs.memorialops.identity.service.CurrentUserService;
 import com.wsllclabs.memorialops.identity.service.LoginAttemptService;
+import com.wsllclabs.memorialops.identity.service.SessionExpiry;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -79,7 +80,9 @@ public class AuthController {
             sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
             securityContextRepository.saveContext(securityContext, request, response);
             loginAttemptService.recordSuccess(loginRequest.username());
-            return currentUserService.forUsername(authentication.getName());
+            return currentUserService
+                    .forUsername(authentication.getName())
+                    .withSessionExpiry(SessionExpiry.of(request));
         } catch (BadCredentialsException | DisabledException exception) {
             loginAttemptService.recordFailure(loginRequest.username());
             throw exception;

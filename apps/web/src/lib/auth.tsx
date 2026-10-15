@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, clearCsrf, ensureCsrf } from "./api";
+import { SessionExpiryToast } from "../components/SessionExpiryToast";
 
 export type Me = {
   id: string;
@@ -7,6 +8,7 @@ export type Me = {
   displayName: string;
   roles: string[];
   capabilities: string[];
+  sessionExpiresAt?: string | null;
 };
 
 type AuthState = {
@@ -14,6 +16,7 @@ type AuthState = {
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
   hasCapability: (capability: string) => boolean;
 };
 
@@ -60,16 +63,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMe(user);
       },
       logout: async () => {
-        await api<void>("/api/auth/logout", { method: "POST" });
-        clearCsrf();
-        setMe(null);
+        try {
+          await api<void>("/api/auth/logout", { method: "POST" });
+        } finally {
+          clearCsrf();
+          setMe(null);
+        }
+      },
+      refresh: async () => {
+        const user = await api<Me>("/api/me");
+        setMe(user);
       },
       hasCapability: (capability) => Boolean(me?.capabilities.includes(capability)),
     }),
     [me, loading],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      <SessionExpiryToast
+        expiresAt={me?.sessionExpiresAt}
+        onStaySignedIn={value.refresh}
+        onSignOut={value.logout}
+      />
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

@@ -63,3 +63,22 @@ Branched from `main` after the Sprint 0 review-fixes merge (`4bcf0f1`).
 - `make image` / Compose `--profile full` healthy: app readiness UP, six mocks healthy, RustFS buckets `attachments` and `permits` created
 - Playwright `e2e/smoke.spec.ts` passed against http://localhost:8080 (health, coordinator login, dashboard, `/applications` reload)
 - `ManagePullRequest` refused with GitHub “must be a collaborator”; branch `cursor/sprint-0-foundations-ed42` is pushed for a human to open the PR
+
+## 2026-10-15 — Sprint 1 remaining (session, seeder, CD smoke)
+
+Branched from `main` after the Sprint 1 merge (`983f41d`) onto `cursor/sprint-1-remaining-identity-ed42`. Stopped pushing the merged sprint-1 branch.
+
+**Done against story IDs**
+
+- UX-1.9: `/api/me` now returns `sessionExpiresAt`; the SPA shows a T-2 minute warning toast and a signed-out confirmation
+- BE-3.1: inactive users have their sessions revoked on the next API call
+- BE-18.1 (skeleton): local/demo seeder creates Draft, Submitted, Eligible, PendingApproval and Cancelled fixtures, plus a review row and attendant assignment
+- TA-2.1 / UX-1.4: Playwright proves 403 (scheduler on draft, admin approve), 422 (unknown transition + allowed next actions) and 409 (stale If-Match)
+- DO-5.3: `deploy.yml` waits for ECS and runs `make deploy-smoke` against brief3-dev when OIDC roles exist
+- DO-10.1 (basic): CloudWatch alarms for ALB 5xx, unhealthy hosts, ECS running tasks and RDS CPU, plus a four-widget dashboard
+
+**Decisions**
+
+- Session expiry is derived from `HttpSession` last-access + `maxInactiveInterval` (30 minutes)
+- Demo seeder stays a skeleton (five cases), not the full §9 volumes
+- No AWS apply from this agent. Post-deploy smoke is skipped until `AWS_DEPLOY_DEV_ROLE_ARN` is set; CI e2e is the local smoke gate
