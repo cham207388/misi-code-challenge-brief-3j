@@ -29,7 +29,8 @@ dependencies {
     testImplementation(libs.archunit.junit6)
 }
 
-val skipWeb = providers.gradleProperty("skipWeb").map(String::toBoolean).orElse(false)
+val skipWeb =
+    providers.gradleProperty("skipWeb").map { it.isBlank() || it.toBoolean() }.orElse(false)
 val webDist = project(":apps:web").layout.projectDirectory.dir("dist")
 
 tasks.named<ProcessResources>("processResources") {

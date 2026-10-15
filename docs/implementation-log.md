@@ -55,6 +55,7 @@ Branched from `main` after the Sprint 0 review-fixes merge (`4bcf0f1`).
 - `AuditService.append` is `Propagation.MANDATORY` so it cannot commit outside the caller's transaction
 - Scheduler list/detail is Eligible+; Intake list is own cases only
 - No AWS apply. Terraform plan workflow remains the PR check.
+- `-PskipWeb` (with or without `=true`) skips Node tasks so the JDK-only Docker build stage does not invoke `npm`. Backend ITs serve a test `index.html` when the SPA is not copied into the jar.
 
 **Verification (2026-10-15)**
 
