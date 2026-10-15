@@ -17,7 +17,8 @@ VALUES
     ('22222222-2222-2222-2222-222222222005', 'attendant1', '$2b$10$NFRZigutUL0YFIFFJ1juQeW5eqBswShPeX0kTDlHPm7EZ9wHHl7ia', 'Avery Attendant', 'avery.attendant@willowmere.example', true, 0, now(), now()),
     ('22222222-2222-2222-2222-222222222006', 'attendant2', '$2b$10$NFRZigutUL0YFIFFJ1juQeW5eqBswShPeX0kTDlHPm7EZ9wHHl7ia', 'Blake Attendant', 'blake.attendant@willowmere.example', true, 0, now(), now()),
     ('22222222-2222-2222-2222-222222222007', 'auditor', '$2b$10$Ou4Z8Eo4HxuD6nPQ6PNpoekMblP/a0D2xEqi.brnmMXaJ7k2H9j9i', 'Quinn Auditor', 'quinn.auditor@willowmere.example', true, 0, now(), now()),
-    ('22222222-2222-2222-2222-222222222008', 'admin', '$2b$10$RK0oxPSRTrCBS91HhALCPOacpFh2na2VqEmThMLV3f7apc6tvX0pe', 'Alex Admin', 'alex.admin@willowmere.example', true, 0, now(), now());
+    ('22222222-2222-2222-2222-222222222008', 'admin', '$2b$10$RK0oxPSRTrCBS91HhALCPOacpFh2na2VqEmThMLV3f7apc6tvX0pe', 'Alex Admin', 'alex.admin@willowmere.example', true, 0, now(), now()),
+    ('22222222-2222-2222-2222-222222222009', 'dualrole', '$2b$10$Jm9xb9Oh0SuIQjYVkArBKOf.As3T25WFCQG1Pi83KczuQphcZPw0q', 'Drew Dualrole', 'drew.dualrole@willowmere.example', true, 0, now(), now());
 
 INSERT INTO user_role (user_id, role_id) VALUES
     ('22222222-2222-2222-2222-222222222001', '11111111-1111-1111-1111-111111111001'),
@@ -27,7 +28,9 @@ INSERT INTO user_role (user_id, role_id) VALUES
     ('22222222-2222-2222-2222-222222222005', '11111111-1111-1111-1111-111111111005'),
     ('22222222-2222-2222-2222-222222222006', '11111111-1111-1111-1111-111111111005'),
     ('22222222-2222-2222-2222-222222222007', '11111111-1111-1111-1111-111111111006'),
-    ('22222222-2222-2222-2222-222222222008', '11111111-1111-1111-1111-111111111007');
+    ('22222222-2222-2222-2222-222222222008', '11111111-1111-1111-1111-111111111007'),
+    ('22222222-2222-2222-2222-222222222009', '11111111-1111-1111-1111-111111111002'),
+    ('22222222-2222-2222-2222-222222222009', '11111111-1111-1111-1111-111111111004');
 
 INSERT INTO business_rule (id, rule_key, value_json) VALUES
     ('33333333-3333-3333-3333-333333333001', 'checkin.window.minutes', '{"before": 60, "after": 30}'),

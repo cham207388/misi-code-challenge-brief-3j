@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.BASE_URL ?? "http://localhost:8080";
+const baseURL = process.env.BASE_URL ?? "http://127.0.0.1:8080";
 
 export default defineConfig({
   testDir: ".",
@@ -15,6 +15,12 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: /screenshots\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "screenshots",
+      testMatch: /screenshots\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
   ],

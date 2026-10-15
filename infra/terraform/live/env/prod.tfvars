@@ -7,6 +7,7 @@ db_instance_class        = "db.t4g.small"
 db_multi_az              = true
 db_backup_retention      = 7
 deletion_protection      = true
+alb_access_logs          = true
 enable_waf               = true
 enable_nat_per_az        = true
 log_retention_days       = 90

@@ -41,7 +41,8 @@ public class CurrentUserService {
     }
 
     private static MeResponse toResponse(AppUser appUser) {
-        List<String> roles = appUser.getRoles().stream().map(RoleEntity::getCode).sorted().toList();
+        List<String> roles =
+                appUser.getRoles().stream().map(RoleEntity::getCode).sorted().toList();
         return new MeResponse(
                 appUser.getId(),
                 appUser.getUsername(),

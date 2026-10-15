@@ -64,7 +64,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     ResponseEntity<ProblemDetail> stale(ObjectOptimisticLockingFailureException exception) {
         ProblemDetail problem = ProblemSupport.create(
-                HttpStatus.CONFLICT, ProblemSupport.TYPE_PREFIX + "conflict", "Stale update", "The record was changed by someone else");
+                HttpStatus.CONFLICT,
+                ProblemSupport.TYPE_PREFIX + "conflict",
+                "Stale update",
+                "The record was changed by someone else");
         problem.setProperty("entity", exception.getPersistentClassName());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
     }
@@ -78,5 +81,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 exception.getMessage());
         problem.setProperty("allowedTransitions", exception.getAllowedTransitions());
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(problem);
+    }
+
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ProblemDetail> unexpected(Exception exception) {
+        ProblemDetail problem = ProblemSupport.create(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
     }
 }

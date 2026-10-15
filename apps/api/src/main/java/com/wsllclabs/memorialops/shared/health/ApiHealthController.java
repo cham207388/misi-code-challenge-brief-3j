@@ -27,13 +27,22 @@ public class ApiHealthController {
     public HealthSummary health() {
         Map<String, String> components = new LinkedHashMap<>();
         components.put("db", probeDatabase());
-        components.put("storage", configured(appProperties.integrations().storage().endpoint()));
-        components.put("registry", configured(appProperties.integrations().registry().baseUrl()));
-        components.put("calendar", configured(appProperties.integrations().calendar().baseUrl()));
-        components.put("notification", configured(appProperties.integrations().notification().baseUrl()));
-        components.put("weather", configured(appProperties.integrations().weather().baseUrl()));
-        components.put("geocoding", configured(appProperties.integrations().geocoding().baseUrl()));
-        components.put("partnerFeed", configured(appProperties.integrations().partnerFeed().host()));
+        components.put(
+                "storage", configured(appProperties.integrations().storage().endpoint()));
+        components.put(
+                "registry", configured(appProperties.integrations().registry().baseUrl()));
+        components.put(
+                "calendar", configured(appProperties.integrations().calendar().baseUrl()));
+        components.put(
+                "notification",
+                configured(appProperties.integrations().notification().baseUrl()));
+        components.put(
+                "weather", configured(appProperties.integrations().weather().baseUrl()));
+        components.put(
+                "geocoding", configured(appProperties.integrations().geocoding().baseUrl()));
+        components.put(
+                "partnerFeed",
+                configured(appProperties.integrations().partnerFeed().host()));
         boolean down = components.values().stream().anyMatch("DOWN"::equals);
         return new HealthSummary(down ? "DOWN" : "UP", components);
     }

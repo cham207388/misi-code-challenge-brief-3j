@@ -32,9 +32,13 @@ public class PartnerFeedController {
     @PostMapping("/batches")
     public Map<String, Object> write() {
         return Map.of(
-                "service", "partner-feed",
-                "id", UUID.randomUUID().toString(),
-                "status", "accepted",
-                "items", List.of());
+                "service",
+                "partner-feed",
+                "id",
+                UUID.randomUUID().toString(),
+                "status",
+                "accepted",
+                "items",
+                List.of());
     }
 }

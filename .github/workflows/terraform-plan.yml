@@ -11,15 +11,19 @@ permissions:
   id-token: write
   pull-requests: write
 
+concurrency:
+  group: terraform-plan-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   plan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v5
+      - uses: hashicorp/setup-terraform@b75000b53e9ce4de2b4712237bbdb711bdc92aba # v3
         with:
           terraform_version: "1.16.6"
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@557591d3fb8057929645fd3c7147240c3ec8e690 # v4
         if: ${{ vars.AWS_PLAN_ROLE_ARN != '' }}
         with:
           role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
@@ -31,6 +35,8 @@ jobs:
         run: |
           make tf-plan ENV=dev
           make tf-plan ENV=prod
+        env:
+          IMAGE_TAG: ${{ github.sha }}
       - name: Comment
         if: ${{ vars.AWS_PLAN_ROLE_ARN != '' }}
-        run: echo "Terraform plans generated for dev and prod. See workflow artifacts."
+        run: echo "Terraform plans written to dev.tfplan and prod.tfplan. Apply uses those saved plans."

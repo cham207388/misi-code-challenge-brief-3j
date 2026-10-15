@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Outlet, useLocation } from "react-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Menu, Trees, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { NAV_ITEMS } from "../lib/nav";
@@ -11,9 +11,27 @@ export function RequireAuth() {
     return <div className="p-8 text-slate">Loading session…</div>;
   }
   if (!me) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    const returnUrl = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />;
   }
   return <AppShell />;
+}
+
+export function RequireCapability({
+  capability,
+  children,
+}: {
+  capability: string;
+  children: ReactNode;
+}) {
+  const { hasCapability, loading } = useAuth();
+  if (loading) {
+    return <div className="p-8 text-slate">Loading session…</div>;
+  }
+  if (!hasCapability(capability)) {
+    return <Navigate to="/403" replace />;
+  }
+  return children;
 }
 
 function AppShell() {
@@ -33,7 +51,7 @@ function AppShell() {
           Memorial Ops
         </div>
         <button type="button" className="rounded-md p-2" aria-expanded={open} aria-controls="app-nav" onClick={() => setOpen((value) => !value)}>
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {open ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
           <span className="sr-only">Toggle navigation</span>
         </button>
       </header>
@@ -47,7 +65,7 @@ function AppShell() {
             <Trees className="h-6 w-6 text-gold" aria-hidden="true" />
             Memorial Ops
           </div>
-          <p className="px-5 pb-4 text-xs uppercase tracking-[0.18em] text-gold/90">{me?.displayName}</p>
+          <p className="px-5 pb-4 text-xs uppercase tracking-[0.18em] text-gold">{me?.displayName}</p>
           <div className="space-y-5 px-3 pb-8">
             {groups.map((group) => (
               <div key={group}>

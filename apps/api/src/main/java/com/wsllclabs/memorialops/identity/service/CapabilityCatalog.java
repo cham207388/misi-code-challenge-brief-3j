@@ -36,12 +36,7 @@ public final class CapabilityCatalog {
 
     private static final Map<String, List<String>> BY_ROLE = Map.of(
             "INTAKE_COORDINATOR",
-            List.of(
-                    DASHBOARD_VIEW,
-                    APPLICATION_READ,
-                    APPLICATION_CREATE,
-                    INFO_REQUESTS,
-                    DOCUMENT_VAULT),
+            List.of(DASHBOARD_VIEW, APPLICATION_READ, APPLICATION_CREATE, INFO_REQUESTS, DOCUMENT_VAULT),
             "ELIGIBILITY_REVIEWER",
             List.of(DASHBOARD_VIEW, APPLICATION_READ, REVIEW_QUEUE, INFO_REQUESTS, REGISTRY_VERIFY, DOCUMENT_VAULT),
             "SCHEDULING_OFFICER",

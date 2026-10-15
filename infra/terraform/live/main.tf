@@ -18,15 +18,21 @@ module "dns_cert" {
   hostname  = var.hostname
 }
 
+data "aws_iam_policy" "ecs_boundary" {
+  name = "brief3-ecs-permissions-boundary"
+}
+
 module "alb" {
-  source            = "../modules/alb"
-  name_prefix       = local.name_prefix
-  vpc_id            = module.network.vpc_id
-  subnet_ids        = module.network.public_subnet_ids
-  security_group_id = module.network.alb_security_group_id
-  certificate_arn   = module.dns_cert.certificate_arn
-  hostname          = var.hostname
-  zone_id           = module.dns_cert.zone_id
+  source              = "../modules/alb"
+  name_prefix         = local.name_prefix
+  vpc_id              = module.network.vpc_id
+  subnet_ids          = module.network.public_subnet_ids
+  security_group_id   = module.network.alb_security_group_id
+  certificate_arn     = module.dns_cert.certificate_arn
+  hostname            = var.hostname
+  zone_id             = module.dns_cert.zone_id
+  deletion_protection = var.deletion_protection
+  access_logs_enabled = var.alb_access_logs
 }
 
 module "ecs_cluster" {
@@ -66,23 +72,24 @@ module "efs" {
 }
 
 module "app" {
-  source             = "../modules/ecs-service"
-  name_prefix        = local.name_prefix
-  environment        = terraform.workspace
-  service_name       = "app"
-  cluster_id         = module.ecs_cluster.cluster_id
-  namespace_arn      = module.ecs_cluster.namespace_arn
-  image              = local.app_image
-  cpu                = var.app_cpu
-  memory             = var.app_memory
-  desired_count      = var.app_desired_count
-  subnet_ids         = module.network.private_subnet_ids
-  security_group_ids = [module.network.app_security_group_id]
-  target_group_arn   = module.alb.target_group_arn
-  region             = var.region
-  log_retention_days = var.log_retention_days
-  s3_bucket_arns     = module.s3_storage.bucket_arns
-  secret_arns        = concat(module.secrets.secret_arns, [module.rds.secret_arn])
+  source                   = "../modules/ecs-service"
+  name_prefix              = local.name_prefix
+  environment              = terraform.workspace
+  service_name             = "app"
+  cluster_id               = module.ecs_cluster.cluster_id
+  namespace_arn            = module.ecs_cluster.namespace_arn
+  image                    = local.app_image
+  cpu                      = var.app_cpu
+  memory                   = var.app_memory
+  desired_count            = var.app_desired_count
+  subnet_ids               = module.network.private_subnet_ids
+  security_group_ids       = [module.network.app_security_group_id]
+  target_group_arn         = module.alb.target_group_arn
+  region                   = var.region
+  log_retention_days       = var.log_retention_days
+  s3_bucket_arns           = module.s3_storage.bucket_arns
+  secret_arns              = concat(module.secrets.secret_arns, [module.rds.secret_arn])
+  permissions_boundary_arn = data.aws_iam_policy.ecs_boundary.arn
   environment_variables = {
     SPRING_PROFILES_ACTIVE     = "aws,${terraform.workspace}"
     SPRING_DATASOURCE_URL      = "jdbc:postgresql://${module.rds.endpoint}:5432/memorialops"

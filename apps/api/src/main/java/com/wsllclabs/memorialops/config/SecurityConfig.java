@@ -5,7 +5,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -20,7 +22,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
@@ -36,7 +42,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    AuthenticationManager authenticationManager(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+    AuthenticationManager authenticationManager(
+            UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider(userDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder);
         authenticationProvider.setHideUserNotFoundExceptions(true);
@@ -44,31 +51,57 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        csrfTokenRepository.setCookieName("XSRF-TOKEN");
-        csrfTokenRepository.setHeaderName("X-XSRF-TOKEN");
+    CookieCsrfTokenRepository csrfTokenRepository(
+            @Value("${server.servlet.session.cookie.secure:false}") boolean secureCookies,
+            @Value("${server.servlet.session.cookie.same-site:lax}") String sameSite) {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieName("XSRF-TOKEN");
+        repository.setHeaderName("X-XSRF-TOKEN");
+        repository.setCookieCustomizer(cookie -> {
+            cookie.httpOnly(false);
+            cookie.secure(secureCookies);
+            cookie.sameSite(sameSite);
+            cookie.path("/");
+        });
+        return repository;
+    }
 
-        http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository).csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
-                .authorizeHttpRequests(auth -> auth.requestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/csrf",
-                                "/api/health",
-                                "/actuator/health",
-                                "/actuator/health/**",
-                                "/actuator/info",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html")
-                        .permitAll()
-                        .requestMatchers("/api/**")
-                        .authenticated()
-                        .anyRequest()
-                        .permitAll())
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(
-                                (request, response, exception) -> writeProblem(response, HttpStatus.UNAUTHORIZED, "Not authenticated"))
-                        .accessDeniedHandler(
-                                (request, response, exception) -> writeProblem(response, HttpStatus.FORBIDDEN, "Access denied")))
+    @Bean
+    SessionAuthenticationStrategy sessionAuthenticationStrategy(CookieCsrfTokenRepository csrfTokenRepository) {
+        return new CompositeSessionAuthenticationStrategy(List.of(
+                new ChangeSessionIdAuthenticationStrategy(), new CsrfAuthenticationStrategy(csrfTokenRepository)));
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            CookieCsrfTokenRepository csrfTokenRepository,
+            @Value("${app.docs.enabled:false}") boolean docsEnabled)
+            throws Exception {
+        http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository)
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(
+                                    "/api/auth/login",
+                                    "/api/auth/csrf",
+                                    "/api/health",
+                                    "/actuator/health",
+                                    "/actuator/health/**",
+                                    "/actuator/info")
+                            .permitAll();
+                    if (docsEnabled) {
+                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                                .permitAll();
+                    } else {
+                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                                .denyAll();
+                    }
+                    auth.requestMatchers("/api/**").authenticated().anyRequest().permitAll();
+                })
+                .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, exception) ->
+                                writeProblem(response, HttpStatus.UNAUTHORIZED, "Not authenticated"))
+                        .accessDeniedHandler((request, response, exception) ->
+                                writeProblem(response, HttpStatus.FORBIDDEN, "Access denied")))
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .logout(logout -> logout.logoutUrl("/api/auth/logout")
@@ -78,12 +111,13 @@ public class SecurityConfig {
         return http.build();
     }
 
-    private static void writeProblem(HttpServletResponse response, HttpStatus status, String detail) throws IOException {
+    private static void writeProblem(HttpServletResponse response, HttpStatus status, String detail)
+            throws IOException {
         String correlationId = ProblemSupport.currentCorrelationId();
         String body = """
                 {"type":"%s","title":"%s","status":%d,"detail":"%s","correlationId":"%s"}
-                """
-                .formatted(ProblemSupport.typeFor(status), status.getReasonPhrase(), status.value(), detail, correlationId);
+                """.formatted(
+                ProblemSupport.typeFor(status), status.getReasonPhrase(), status.value(), detail, correlationId);
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));

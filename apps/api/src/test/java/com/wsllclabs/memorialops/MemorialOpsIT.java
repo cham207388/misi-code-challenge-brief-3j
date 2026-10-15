@@ -9,31 +9,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.wsllclabs.memorialops.support.AbstractIntegrationTest;
+import com.wsllclabs.memorialops.support.LoginRequestBuilder;
+import com.wsllclabs.memorialops.support.TestUsers;
+import com.wsllclabs.memorialops.support.UserSession;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class MemorialOpsIT {
-
-    @Container
-    @ServiceConnection
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
-
-    @Autowired
-    private MockMvc mockMvc;
+class MemorialOpsIT extends AbstractIntegrationTest {
 
     @Test
     void healthLoginAndSpaFallback() throws Exception {
@@ -46,28 +31,63 @@ class MemorialOpsIT {
         mockMvc.perform(get("/actuator/health/liveness")).andExpect(status().isOk());
         mockMvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/auth/csrf"))
+        UserSession.Authenticated session =
+                UserSession.login(mockMvc, TestUsers.COORDINATOR.username(), TestUsers.COORDINATOR.password());
+        mockMvc.perform(get("/api/me").session(session.session()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").isNotEmpty());
+                .andExpect(jsonPath("$.username").value("coordinator"));
 
         mockMvc.perform(post("/api/auth/login")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"coordinator\",\"password\":\"Coordinator!2026\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("coordinator"))
-                .andExpect(jsonPath("$.capabilities").isArray());
-
-        mockMvc.perform(post("/api/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"coordinator\",\"password\":\"wrong\"}"))
+                        .content(LoginRequestBuilder.forUser("coordinator")
+                                .password("wrong")
+                                .json()))
                 .andExpect(status().isUnauthorized());
 
-        MvcResult spa = mockMvc.perform(get("/applications/demo-case")).andExpect(status().isOk()).andReturn();
+        MvcResult spa = mockMvc.perform(get("/applications/demo-case"))
+                .andExpect(status().isOk())
+                .andReturn();
         assertThat(spa.getResponse().getForwardedUrl()).isEqualTo("/index.html");
         mockMvc.perform(get("/index.html"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Memorial Event Operations")));
+    }
+
+    @Test
+    void loginChangesSessionId() throws Exception {
+        MockHttpSession before = UserSession.csrfSession(mockMvc);
+        String previousId = before.getId();
+        mockMvc.perform(post("/api/auth/login")
+                        .session(before)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LoginRequestBuilder.forUser(TestUsers.COORDINATOR.username())
+                                .password(TestUsers.COORDINATOR.password())
+                                .json()))
+                .andExpect(status().isOk());
+        assertThat(before.getId()).isNotEqualTo(previousId);
+    }
+
+    @Test
+    void dualRoleUserHasReviewAndApprovalCapabilities() throws Exception {
+        UserSession.Authenticated session =
+                UserSession.login(mockMvc, TestUsers.DUALROLE.username(), TestUsers.DUALROLE.password());
+        mockMvc.perform(get("/api/me").session(session.session()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles")
+                        .value(org.hamcrest.Matchers.hasItems("ELIGIBILITY_REVIEWER", "OPERATIONS_MANAGER")))
+                .andExpect(jsonPath("$.capabilities")
+                        .value(org.hamcrest.Matchers.hasItems("REVIEW_QUEUE", "APPROVAL_DECIDE")));
+    }
+
+    @Test
+    void rejectsUnsafeCorrelationIds() throws Exception {
+        mockMvc.perform(get("/api/health").header("X-Correlation-ID", "bad id with spaces"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Correlation-ID", org.hamcrest.Matchers.not("bad id with spaces")));
+        mockMvc.perform(get("/api/health").header("X-Correlation-ID", "ok-id_123"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Correlation-ID", "ok-id_123"));
     }
 }

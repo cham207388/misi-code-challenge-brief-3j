@@ -32,9 +32,13 @@ public class NotificationGatewayController {
     @PostMapping("/messages")
     public Map<String, Object> write() {
         return Map.of(
-                "service", "notification-gateway",
-                "id", UUID.randomUUID().toString(),
-                "status", "accepted",
-                "items", List.of());
+                "service",
+                "notification-gateway",
+                "id",
+                UUID.randomUUID().toString(),
+                "status",
+                "accepted",
+                "items",
+                List.of());
     }
 }

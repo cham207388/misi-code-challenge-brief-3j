@@ -92,3 +92,8 @@ variable "alarm_email" {
   type    = string
   default = ""
 }
+
+variable "alb_access_logs" {
+  type    = bool
+  default = false
+}

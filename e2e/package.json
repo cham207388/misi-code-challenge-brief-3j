@@ -6,7 +6,11 @@
     "test": "playwright test",
     "smoke": "playwright test smoke.spec.ts"
   },
+  "engines": {
+    "node": ">=24.21.0 <25"
+  },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "^1.55.0"
   }
 }

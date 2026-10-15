@@ -16,10 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 class ArchitectureTest {
 
     @ArchTest
-    static final ArchRule noFieldInjection = noFields()
-            .should()
-            .beAnnotatedWith(Autowired.class)
-            .because("constructor injection is required");
+    static final ArchRule noFieldInjection =
+            noFields().should().beAnnotatedWith(Autowired.class).because("constructor injection is required");
 
     @ArchTest
     static final ArchRule controllersDoNotUseRepositories = noClasses()

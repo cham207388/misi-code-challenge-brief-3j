@@ -24,6 +24,11 @@ spotless {
 
 tasks.register("verify") {
     group = "verification"
-    description = "Format check plus the full test suite (make verify)."
-    dependsOn("spotlessCheck", "test")
+    description = "Format check, unit tests, integration tests and JaCoCo gates (make verify)."
+    dependsOn(
+        "spotlessCheck",
+        "test",
+        ":apps:api:integrationTest",
+        ":apps:api:jacocoTestCoverageVerification",
+    )
 }

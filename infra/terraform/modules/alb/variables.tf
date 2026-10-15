@@ -5,3 +5,11 @@ variable "security_group_id" { type = string }
 variable "certificate_arn" { type = string }
 variable "hostname" { type = string }
 variable "zone_id" { type = string }
+variable "deletion_protection" {
+  type    = bool
+  default = false
+}
+variable "access_logs_enabled" {
+  type    = bool
+  default = false
+}

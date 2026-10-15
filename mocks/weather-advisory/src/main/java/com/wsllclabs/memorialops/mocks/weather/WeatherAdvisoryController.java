@@ -32,9 +32,13 @@ public class WeatherAdvisoryController {
     @PostMapping("/forecast")
     public Map<String, Object> write() {
         return Map.of(
-                "service", "weather-advisory",
-                "id", UUID.randomUUID().toString(),
-                "status", "accepted",
-                "items", List.of());
+                "service",
+                "weather-advisory",
+                "id",
+                UUID.randomUUID().toString(),
+                "status",
+                "accepted",
+                "items",
+                List.of());
     }
 }

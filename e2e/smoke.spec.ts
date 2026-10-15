@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test("health, login, dashboard and deep-link refresh", async ({ page, request }) => {
@@ -9,10 +10,16 @@ test("health, login, dashboard and deep-link refresh", async ({ page, request })
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Staff sign in" })).toBeVisible();
+  const loginAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(loginAxe.violations).toEqual([]);
+
   await page.getByLabel("Username").fill("coordinator");
   await page.getByLabel("Password").fill("Coordinator!2026");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Operations Dashboard" })).toBeVisible();
+
+  const dashboardAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(dashboardAxe.violations).toEqual([]);
 
   await page.goto("/applications");
   await expect(page.getByRole("heading", { name: "Application Register" })).toBeVisible();
