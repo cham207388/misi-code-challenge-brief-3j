@@ -19,35 +19,40 @@ services:
       retries: 20
 
   minio:
-    image: minio/minio:latest
+    # rustfs is S3-compatible and anonymously pullable; minio/minio now requires registry login.
+    image: rustfs/rustfs:latest
     profiles: [core, full]
-    command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123456}
+      RUSTFS_ACCESS_KEY: ${MINIO_ACCESS_KEY:-memorial}
+      RUSTFS_SECRET_KEY: ${MINIO_SECRET_KEY:-memorial-minio}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-memorial}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-memorial-minio}
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - miniodata:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
       interval: 10s
       timeout: 5s
       retries: 20
       start_period: 15s
 
   minio-init:
-    image: minio/mc:latest
+    image: amazon/aws-cli:latest
     profiles: [core, full]
     depends_on:
       minio:
         condition: service_healthy
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123456}
-      MINIO_APP_USER: ${MINIO_ACCESS_KEY:-memorial}
-      MINIO_APP_PASSWORD: ${MINIO_SECRET_KEY:-memorial-minio}
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-memorial}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-memorial-minio}
+      AWS_DEFAULT_REGION: us-east-1
+      S3_ENDPOINT: http://minio:9000
     volumes:
       - ./minio-init.sh:/minio-init.sh:ro
     entrypoint: ["/bin/sh", "/minio-init.sh"]

@@ -7,3 +7,4 @@
 - Map tiles, SMS, ClamAV and WAF-on-dev are out of scope or later.
 - Mocks also run in prod later because no real providers exist.
 - `terraform apply` is intentionally not run by the Sprint 0 agent.
+- Local object storage uses `rustfs/rustfs` (S3-compatible, ports 9000/9001) because `minio/minio` and `minio/mc` are no longer anonymously pullable from Docker Hub. AWS still uses S3.

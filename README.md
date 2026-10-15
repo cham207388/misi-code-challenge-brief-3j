@@ -57,7 +57,7 @@ Passwords are not shown in the UI.
 |-------------------------|-------------|
 | App (SPA + API)         | 8080        |
 | Postgres                | 5432        |
-| MinIO API / console     | 9000 / 9001 |
+| Object storage (RustFS S3) API / console | 9000 / 9001 |
 | SFTP                    | 2222        |
 | Applicant registry      | 8081        |
 | Regional calendar       | 8082        |

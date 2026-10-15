@@ -1,23 +1,18 @@
 #!/bin/sh
+# Creates private attachment and permit buckets on the local S3-compatible store.
+# Official minio/minio and minio/mc images are no longer anonymously pullable, so
+# the Compose stack uses rustfs/rustfs plus the AWS CLI.
 set -eu
-mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
-mc mb --ignore-existing local/attachments
-mc mb --ignore-existing local/permits
-mc anonymous set none local/attachments
-mc anonymous set none local/permits
-mc admin user add local "$MINIO_APP_USER" "$MINIO_APP_PASSWORD" || true
-cat >/tmp/policy.json <<'EOF'
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
-      "Resource": ["arn:aws:s3:::attachments", "arn:aws:s3:::attachments/*", "arn:aws:s3:::permits", "arn:aws:s3:::permits/*"]
-    }
-  ]
-}
-EOF
-mc admin policy create local memorial-app /tmp/policy.json || true
-mc admin policy attach local memorial-app --user "$MINIO_APP_USER" || true
-echo "minio buckets ready"
+ENDPOINT="${S3_ENDPOINT:-http://minio:9000}"
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-${MINIO_ROOT_USER:-minio}}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-${MINIO_ROOT_PASSWORD:-minio123456}}"
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+
+for bucket in attachments permits; do
+  if aws --endpoint-url "$ENDPOINT" s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+    echo "bucket ${bucket} already exists"
+  else
+    aws --endpoint-url "$ENDPOINT" s3 mb "s3://${bucket}"
+  fi
+done
+echo "object-storage buckets ready"
