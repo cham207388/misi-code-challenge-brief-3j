@@ -9,7 +9,7 @@ test("403 422 and 409 are demonstrable through the API", async ({ request, playw
     headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": await csrfHeader(request) },
     data: {},
   });
-  expect(created.status()).toBe(201);
+  expect(created.status(), await created.text()).toBe(201);
   const draft = (await created.json()) as { id: string; etag: string };
 
   const unknown = await request.post(`/api/applications/${draft.id}/transitions`, {

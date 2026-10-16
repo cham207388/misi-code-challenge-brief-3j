@@ -37,6 +37,8 @@ test("health, login, dashboard and deep-link refresh", async ({ page, request })
   await page.getByLabel("Username").fill("attendant1");
   await page.getByLabel("Password").fill("Attendant!2026");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Operations Dashboard" })).toBeVisible();
   await page.goto("/applications");
+  await expect(page).toHaveURL(/\/403$/);
   await expect(page.getByRole("heading", { name: "Access denied" })).toBeVisible();
 });
