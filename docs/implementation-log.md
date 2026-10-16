@@ -81,4 +81,5 @@ Branched from `main` after the Sprint 1 merge (`983f41d`) onto `cursor/sprint-1-
 
 - Session expiry is derived from `HttpSession` last-access + `maxInactiveInterval` (30 minutes)
 - Demo seeder stays a skeleton (five cases), not the full §9 volumes
+- Seeded eligibility reviews use outcome `ELIGIBLE` (the V003 check rejects title-case `Eligible` and would crash local Compose readiness)
 - No AWS apply from this agent. Post-deploy smoke is skipped until `AWS_DEPLOY_DEV_ROLE_ARN` is set; CI e2e is the local smoke gate

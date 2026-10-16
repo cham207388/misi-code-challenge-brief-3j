@@ -1,5 +1,6 @@
 package com.wsllclabs.memorialops.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -16,6 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.boot.DefaultApplicationArguments;
 
@@ -55,7 +57,11 @@ class DemoApplicationSeederTest {
         seeder.run(new DefaultApplicationArguments());
         verify(applications, times(5)).save(any());
         verify(references, times(5)).nextApplicationReference();
-        verify(reviews, times(2)).save(any());
+        ArgumentCaptor<EligibilityReview> reviewCaptor = ArgumentCaptor.forClass(EligibilityReview.class);
+        verify(reviews, times(2)).save(reviewCaptor.capture());
+        assertThat(reviewCaptor.getAllValues())
+                .extracting(EligibilityReview::getOutcome)
+                .containsOnly("ELIGIBLE");
         verify(assignments, times(2)).save(any());
         when(applications.countByDeletedAtIsNull()).thenReturn(5L);
         seeder.run(new DefaultApplicationArguments());

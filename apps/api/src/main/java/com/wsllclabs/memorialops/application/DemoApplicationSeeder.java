@@ -25,6 +25,7 @@ public class DemoApplicationSeeder implements ApplicationRunner {
     private static final UUID OAKRIDGE = UUID.fromString("44444444-4444-4444-4444-444444444001");
     private static final UUID CHAPEL = UUID.fromString("55555555-5555-5555-5555-555555555001");
     private static final UUID MEMORIAL = UUID.fromString("66666666-6666-6666-6666-666666666001");
+    private static final String ELIGIBLE_OUTCOME = "ELIGIBLE";
 
     private final ApplicationCaseRepository applicationCaseRepository;
     private final ApplicantRepository applicantRepository;
@@ -117,7 +118,7 @@ public class DemoApplicationSeeder implements ApplicationRunner {
         }
         if (status == ApplicationStatus.PENDING_APPROVAL || status == ApplicationStatus.ELIGIBLE) {
             eligibilityReviewRepository.save(
-                    EligibilityReview.record(application.getId(), REVIEWER, "Eligible", "Seeded review", now));
+                    EligibilityReview.record(application.getId(), REVIEWER, ELIGIBLE_OUTCOME, "Seeded review", now));
         }
         if (assign) {
             eventAssignmentRepository.save(EventAssignment.assign(application.getId(), ATTENDANT));
