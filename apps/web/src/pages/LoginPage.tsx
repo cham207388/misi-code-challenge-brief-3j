@@ -64,6 +64,11 @@ export function LoginPage() {
           <h2 id="login-heading" className="font-serif text-2xl">
             Staff sign in
           </h2>
+          {params.get("signedOut") === "1" ? (
+            <p role="status" className="mt-3 rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">
+              You have been signed out.
+            </p>
+          ) : null}
           {form.formState.errors.root || form.formState.errors.username || form.formState.errors.password ? (
             <div tabIndex={-1} className="mt-4 rounded-md bg-clay/10 px-3 py-2 text-sm text-clay" role="alert">
               {form.formState.errors.root?.message ?? "Enter a username and password."}

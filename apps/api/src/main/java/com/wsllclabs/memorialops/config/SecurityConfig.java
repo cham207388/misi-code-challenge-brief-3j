@@ -1,6 +1,8 @@
 package com.wsllclabs.memorialops.config;
 
 import com.wsllclabs.memorialops.exception.ProblemSupport;
+import com.wsllclabs.memorialops.identity.repository.AppUserRepository;
+import com.wsllclabs.memorialops.identity.web.InactiveUserSessionFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -8,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -27,6 +30,7 @@ import org.springframework.security.web.authentication.session.ChangeSessionIdAu
 import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
@@ -82,15 +86,31 @@ public class SecurityConfig {
     }
 
     @Bean
+    InactiveUserSessionFilter inactiveUserSessionFilter(AppUserRepository appUserRepository) {
+        return new InactiveUserSessionFilter(appUserRepository);
+    }
+
+    @Bean
+    FilterRegistrationBean<InactiveUserSessionFilter> inactiveUserSessionFilterRegistration(
+            InactiveUserSessionFilter inactiveUserSessionFilter) {
+        FilterRegistrationBean<InactiveUserSessionFilter> registration =
+                new FilterRegistrationBean<>(inactiveUserSessionFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             CookieCsrfTokenRepository csrfTokenRepository,
             SecurityContextRepository securityContextRepository,
+            InactiveUserSessionFilter inactiveUserSessionFilter,
             @Value("${app.docs.enabled:false}") boolean docsEnabled)
             throws Exception {
         http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
+                .addFilterAfter(inactiveUserSessionFilter, SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(
                                     "/api/auth/login",

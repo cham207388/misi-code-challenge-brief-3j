@@ -91,6 +91,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - run: make init
+      - run: make jars
       - run: cd e2e && npm ci && npx playwright install --with-deps chromium
       - run: make up
       - run: |

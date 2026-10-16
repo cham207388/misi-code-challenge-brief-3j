@@ -21,6 +21,14 @@ public class EventAssignment {
 
     protected EventAssignment() {}
 
+    public static EventAssignment assign(UUID applicationId, UUID attendantId) {
+        EventAssignment assignment = new EventAssignment();
+        assignment.id = UUID.randomUUID();
+        assignment.applicationId = applicationId;
+        assignment.attendantId = attendantId;
+        return assignment;
+    }
+
     public UUID getApplicationId() {
         return applicationId;
     }

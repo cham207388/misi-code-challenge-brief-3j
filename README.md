@@ -103,11 +103,11 @@ GitHub Actions uses OIDC roles `brief3-gha-plan`, `brief3-gha-ecr-push`, `brief3
 | POST | `/api/applications/{id}/transitions` | State machine; 422/409/403 as specified |
 | GET | `/api/lookups/cemeteries` | Seeded Oakridge / Lakeside |
 
-Stale writes return `409` `urn:memorial-ops:conflict` with `version`, `etag` and `current`. Invalid from/to pairs return `422` `urn:memorial-ops:invalid-transition`.
+Stale writes return `409` `urn:memorial-ops:conflict` with `version`, `etag` and `current`. Invalid from/to pairs return `422` `urn:memorial-ops:invalid-transition`. `/api/me` includes `sessionExpiresAt` so the SPA can warn two minutes before the 30-minute session ends.
 
 ## Makefile targets
 
-`init`, `jars`, `up`, `up-core`, `down`, `reset`, `logs`, `test`, `verify`, `e2e`, `image`, `ecr-login`, `image-push`, `trivy`, `lint`, `tf-fmt`, `tf-validate`, `tf-plan`, `tf-apply`, `screenshots`, `bundle`.
+`init`, `jars`, `up`, `up-core`, `down`, `reset`, `logs`, `test`, `verify`, `e2e`, `deploy-smoke`, `image`, `ecr-login`, `image-push`, `trivy`, `lint`, `tf-fmt`, `tf-validate`, `tf-plan`, `tf-apply`, `screenshots`, `bundle`.
 
 ## Submission
 

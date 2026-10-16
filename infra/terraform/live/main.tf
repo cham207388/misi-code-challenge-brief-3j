@@ -105,11 +105,15 @@ module "app" {
 }
 
 module "observability" {
-  source         = "../modules/observability"
-  name_prefix    = local.name_prefix
-  region         = var.region
-  alb_arn_suffix = module.alb.arn_suffix
-  alarm_email    = var.alarm_email
+  source                  = "../modules/observability"
+  name_prefix             = local.name_prefix
+  region                  = var.region
+  alb_arn_suffix          = module.alb.arn_suffix
+  target_group_arn_suffix = module.alb.target_group_arn_suffix
+  cluster_name            = module.ecs_cluster.cluster_name
+  service_name            = module.app.service_name
+  db_identifier           = module.rds.identifier
+  alarm_email             = var.alarm_email
 }
 
 module "waf" {

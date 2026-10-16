@@ -2,6 +2,8 @@ package com.wsllclabs.memorialops.identity.controller;
 
 import com.wsllclabs.memorialops.identity.dto.MeResponse;
 import com.wsllclabs.memorialops.identity.service.CurrentUserService;
+import com.wsllclabs.memorialops.identity.service.SessionExpiry;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +21,7 @@ public class MeController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public MeResponse me() {
-        return currentUserService.current();
+    public MeResponse me(HttpServletRequest request) {
+        return currentUserService.current().withSessionExpiry(SessionExpiry.of(request));
     }
 }

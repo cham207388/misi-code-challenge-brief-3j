@@ -35,7 +35,8 @@ class MemorialOpsIT extends AbstractIntegrationTest {
                 UserSession.login(mockMvc, TestUsers.COORDINATOR.username(), TestUsers.COORDINATOR.password());
         mockMvc.perform(get("/api/me").session(session.session()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("coordinator"));
+                .andExpect(jsonPath("$.username").value("coordinator"))
+                .andExpect(jsonPath("$.sessionExpiresAt").exists());
 
         mockMvc.perform(post("/api/auth/login")
                         .with(csrf())

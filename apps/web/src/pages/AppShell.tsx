@@ -93,7 +93,11 @@ function AppShell() {
           </div>
           <div className="px-5 pb-8 text-sm">
             <p className="text-stone/70">{me?.roles.join(", ")}</p>
-            <button type="button" className="mt-3 rounded-md border border-gold/40 px-3 py-1.5 text-gold" onClick={() => void logout()}>
+            <button
+              type="button"
+              className="mt-3 rounded-md border border-gold/40 px-3 py-1.5 text-gold"
+              onClick={() => void logout("/login?signedOut=1")}
+            >
               Sign out
             </button>
           </div>

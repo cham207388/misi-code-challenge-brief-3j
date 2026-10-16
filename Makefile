@@ -7,7 +7,7 @@ AWS_REGION ?= us-east-1
 ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null)
 ECR_REGISTRY ?= $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 
-.PHONY: init jars up up-core down reset logs test verify e2e image ecr-login image-push trivy lint tf-fmt tf-validate tf-plan tf-apply screenshots bundle
+.PHONY: init jars up up-core down reset logs test verify e2e deploy-smoke image ecr-login image-push trivy lint tf-fmt tf-validate tf-plan tf-apply screenshots bundle
 
 init:
 	@test -f .env || cp .env.example .env
@@ -16,10 +16,10 @@ init:
 jars:
 	./gradlew bootJar
 
-up: init
+up: init jars
 	$(COMPOSE) --profile full up -d --build
 
-up-core: init
+up-core: init jars
 	$(COMPOSE) --profile core up -d --build
 
 down:
@@ -39,6 +39,9 @@ verify:
 
 e2e:
 	cd e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test --project=chromium
+
+deploy-smoke:
+	cd e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test --project=chromium deploy-smoke.spec.ts
 
 image:
 	docker build -f infra/docker/Dockerfile.app -t brief3/app:$(IMAGE_TAG) .

@@ -57,6 +57,7 @@ public class CurrentUserService {
                 appUser.getUsername(),
                 appUser.getDisplayName(),
                 roles,
-                List.copyOf(CapabilityCatalog.capabilitiesFor(roles)));
+                List.copyOf(CapabilityCatalog.capabilitiesFor(roles)),
+                null);
     }
 }
